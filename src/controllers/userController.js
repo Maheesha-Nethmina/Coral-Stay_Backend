@@ -14,10 +14,10 @@ const generateToken = (user) => {
 
 // Register User
 const registerUser = async (req, res) => {
-  const { name, email, phone, password, retypePassword, role } = req.body;
+  const { name, email, password, retypePassword, role } = req.body;
 
   try {
-    if (!name || !email || !phone || !password || !retypePassword) {
+    if (!name || !email || !password || !retypePassword) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -37,7 +37,7 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Email already registered" });
     }
 
-    const newUser = new User({ name, email, phone, password, role });
+    const newUser = new User({ name, email, password, role });
     await newUser.save();
 
     return res.status(201).json({ message: "User registered successfully" });
@@ -46,6 +46,7 @@ const registerUser = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Login User
 const loginUser = async (req, res) => {
