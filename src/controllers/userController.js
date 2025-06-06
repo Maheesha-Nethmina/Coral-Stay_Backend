@@ -5,14 +5,18 @@ const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Generate JWT token
+// ✅ Google OAuth2 Client
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// 🔐 Generate JWT token
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: '1h',
   });
 };
 
-// Register User
+// ✅ Register User
 const registerUser = async (req, res) => {
   const { name, email, password, retypePassword, role } = req.body;
 
@@ -47,8 +51,7 @@ const registerUser = async (req, res) => {
   }
 };
 
-
-// Login User
+// ✅ Login User (normal login)
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -72,6 +75,7 @@ const loginUser = async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
+        name: user.name,
         role: user.role,
       },
       redirectTo: user.role === 'admin' ? '/admin' : '/',
@@ -82,7 +86,56 @@ const loginUser = async (req, res) => {
   }
 };
 
-// Logout User
+// ✅ Google Sign-In
+const googleSignIn = async (req, res) => {
+  try {
+    const { tokenId } = req.body;
+
+    const ticket = await client.verifyIdToken({
+      idToken: tokenId,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, sub: googleId } = payload;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = new User({
+        name,
+        email,
+        googleId,
+        password: crypto.randomBytes(16).toString("hex"), // dummy password
+      });
+      await user.save();
+    }
+
+    const token = generateToken(user);
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      message: "Login successful",
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("Google Sign-In error:", err);
+    return res.status(401).json({ message: "Google Sign-In failed" });
+  }
+};
+
+// ✅ Logout User
 const logoutUser = (req, res) => {
   try {
     res.clearCookie('token', {
@@ -99,7 +152,7 @@ const logoutUser = (req, res) => {
   }
 };
 
-// Get current authenticated user (uses middleware to populate req.user)
+// ✅ Get current user
 const getMe = async (req, res) => {
   try {
     return res.status(200).json({ user: req.user });
@@ -108,15 +161,13 @@ const getMe = async (req, res) => {
   }
 };
 
-// Forget password
+// ✅ Forgot Password
 const forgetPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
@@ -154,14 +205,14 @@ const forgetPassword = async (req, res) => {
   }
 };
 
-
-// Reset password
+// ✅ Reset Password
 const resetPassword = async (req, res) => {
   const token = req.body.token || "";
   const { newPassword } = req.body;
 
-  if (!token) return res.status(400).json({ message: "Missing token." });
-  if (!newPassword) return res.status(400).json({ message: "Missing password." });
+  if (!token || !newPassword) {
+    return res.status(400).json({ message: "Token and new password required" });
+  }
 
   try {
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
@@ -187,12 +238,12 @@ const resetPassword = async (req, res) => {
   }
 };
 
-
 module.exports = {
   registerUser,
   loginUser,
   logoutUser,
   getMe,
   forgetPassword,
-  resetPassword
+  resetPassword,
+  googleSignIn,
 };
