@@ -21,13 +21,15 @@ const Event=require('../models/eventsModel');
 const addEvent = async (req, res) => {
     console.log("BODY RECEIVED:", req.body);  // 🟨 Debug line
 
-    const { image, title, description, date,mapUrl } = req.body;
-    if (!image || !title || !description || !date || !mapUrl) {
+    const { title, description, date,mapUrl } = req.body;
+          const imageUrl = req.file?.path || '';
+
+    if (!title || !description || !date || !mapUrl) {
         return res.status(400).json({ message: "Missing fields in request body" });
     }
 
     try {
-        const events = new Event({ image, title, description, date,mapUrl });
+        const events = new Event({title, description, date,mapUrl,imageUrl });
         await events.save();
         return res.status(201).json({ events });
     } catch (err) {
@@ -53,29 +55,29 @@ const getById=async(req,res,next)=>{
     return res.status(200).json({event});
 }
 
-const updateEvent=async(req,res,next)=>{
-    const id=req.params.id;
-    const {image, title, description, date,mapUrl}=req.body;
-    let event;
-    try {
-        event=await Event.findByIdAndUpdate(id,{
-           image, 
-           title,
-           description,
-           date,
-           mapUrl
-        },{ new: true }); 
-        event=await event.save();
-    }
-    catch (err) {
-        console.log(err);
-    }
-    //not found
-    if(!event){
-        return res.status(404).json({message:"Unable to update event"});
-    }
-    return res.status(200).json({event});
-}
+const updateEvent = async (req, res, next) => {
+  const id = req.params.id;
+  const { title, description, date, mapUrl } = req.body;
+  const imageUrl = req.file?.path;
+
+  try {
+    let event = await Event.findById(id); // use the correct model
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    event.title = title;
+    event.description = description;
+    event.date = date;
+    event.mapUrl = mapUrl;
+    if (imageUrl) event.imageUrl = imageUrl; // use correct variable name
+
+    await event.save();
+    return res.status(200).json({ event });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Update failed" });
+  }
+};
+
 
 //Delete user
 const deleteEvent=async(req,res,next)=>{

@@ -1,10 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const eventsSchema = new Schema({
-    image: {
-        type: String,
-        required: true
-    },
     
     title: {
         type: String,
@@ -22,7 +18,9 @@ const eventsSchema = new Schema({
     mapUrl: {
      type: String
      },
-    
+    imageUrl: { 
+        type: String, default: ''
+     }
     
 }); 
 module.exports = mongoose.model(
