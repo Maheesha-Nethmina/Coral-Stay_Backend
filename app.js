@@ -38,9 +38,11 @@ app.use(cookieParser());
 // Routes
 const userRoutes = require('./src/routes/userRoutes');
 const eventRoutes = require('./src/routes/eventRoutes');
+const adminRoutes = require('./src/routes/adminRoutes');
 
 app.use('/authentication', userRoutes);
 app.use('/events', eventRoutes);
+app.use('/admin', adminRoutes);
 
 // 404 fallback route
 app.use((req, res) => {
