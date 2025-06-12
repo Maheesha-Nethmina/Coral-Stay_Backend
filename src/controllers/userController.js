@@ -5,18 +5,18 @@ const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// ✅ Google OAuth2 Client
+// Google OAuth2 Client
 const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// 🔐 Generate JWT token
+// Generate JWT token
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: '1h',
   });
 };
 
-// ✅ Register User
+// Register User
 const registerUser = async (req, res) => {
   const { name, email, password, retypePassword, role } = req.body;
 
@@ -51,7 +51,7 @@ const registerUser = async (req, res) => {
   }
 };
 
-// ✅ Login User (normal login)
+// Login User (normal login)
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -86,7 +86,7 @@ const loginUser = async (req, res) => {
   }
 };
 
-// ✅ Google Sign-In
+// Google Sign-In
 const googleSignIn = async (req, res) => {
   try {
     const { tokenId } = req.body;
@@ -106,7 +106,7 @@ const googleSignIn = async (req, res) => {
         name,
         email,
         googleId,
-        password: crypto.randomBytes(16).toString("hex"), // dummy password
+        password: crypto.randomBytes(16).toString("hex"),
       });
       await user.save();
     }
@@ -135,7 +135,7 @@ const googleSignIn = async (req, res) => {
   }
 };
 
-// ✅ Logout User
+// Logout User
 const logoutUser = (req, res) => {
   try {
     res.clearCookie('token', {
@@ -152,7 +152,7 @@ const logoutUser = (req, res) => {
   }
 };
 
-// ✅ Get current user
+//  Get current user
 const getMe = async (req, res) => {
   try {
     return res.status(200).json({ user: req.user });
@@ -161,7 +161,7 @@ const getMe = async (req, res) => {
   }
 };
 
-// ✅ Forgot Password
+//  Forgot Password
 const forgetPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -205,7 +205,7 @@ const forgetPassword = async (req, res) => {
   }
 };
 
-// ✅ Reset Password
+//  Reset Password
 const resetPassword = async (req, res) => {
   const token = req.body.token || "";
   const { newPassword } = req.body;
