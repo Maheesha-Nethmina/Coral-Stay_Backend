@@ -25,7 +25,7 @@ const updateUserRole = async (req, res) => {
 
     await user.save();
 
-    // 👉 If user is deactivated, send 403 to force logout
+    // If user is deactivated, send 403 to force logout
     if (role === 'deactivated') {
       return res.status(403).json({ message: 'User deactivated' });
     }
@@ -60,7 +60,7 @@ const updateUserDetails = async (req, res) => {
 };
 
 
-// Send an email to user 
+// Send an email to user
 const sendEmailToUser = async (req, res) => {
   const { email, subject, message } = req.body;
 

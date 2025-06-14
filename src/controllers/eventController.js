@@ -47,7 +47,7 @@ const getById=async(req,res,next)=>{
         event=await Event.findById(id);
     } catch (err) {
         console.log(err);
-    }  
+    }
     //not found
     if(!event){
         return res.status(404).json({message:"No event found"});
