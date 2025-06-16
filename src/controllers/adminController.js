@@ -1,4 +1,6 @@
 const User = require('../models/userModel');
+const nodemailer = require('nodemailer');
+require('dotenv').config();
 
 // Get all users 
 const getAllUsers = async (req, res) => {
@@ -64,14 +66,44 @@ const updateUserDetails = async (req, res) => {
 const sendEmailToUser = async (req, res) => {
   const { email, subject, message } = req.body;
 
+  if (!email || !subject || !message) {
+    return res.status(400).json({ message: 'Email, subject, and message are required.' });
+  }
+
   try {
-    // Example using nodemailer can go here (or skip for now)
-    console.log(`Send email to ${email}: ${subject} - ${message}`);
-    res.status(200).json({ message: 'Email sent (simulated)' });
+    // Configure the transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    // Email options
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject,
+      text: message,
+    };
+
+    // Send the email
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('Error sending email:', error);
+        return res.status(500).json({ message: 'Failed to send email', error });
+      } else {
+        console.log('Email sent:', info.response);
+        return res.status(200).json({ message: 'Email sent successfully' });
+      }
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Error sending email' });
+    console.error('Server error in sendEmailToUser:', err);
+    res.status(500).json({ message: 'Server error while sending email' });
   }
 };
+
 
 module.exports = {
   getAllUsers,
