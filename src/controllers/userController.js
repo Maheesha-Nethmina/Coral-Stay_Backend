@@ -206,6 +206,38 @@ const forgetPassword = async (req, res) => {
 };
 
 //  Reset Password
+// const resetPassword = async (req, res) => {
+//   const token = req.body.token || "";
+//   const { newPassword } = req.body;
+
+//   if (!token || !newPassword) {
+//     return res.status(400).json({ message: "Token and new password required" });
+//   }
+
+//   try {
+//     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+//     const user = await User.findOne({
+//       resetPasswordToken: hashedToken,
+//       resetPasswordExpire: { $gt: Date.now() },
+//     });
+
+//     if (!user) {
+//       return res.status(400).json({ message: "Invalid or expired token." });
+//     }
+
+//     user.password = await bcrypt.hash(newPassword, 10);
+//     user.resetPasswordToken = undefined;
+//     user.resetPasswordExpire = undefined;
+//     await user.save();
+
+//     return res.json({ message: "Password has been reset successfully." });
+//   } catch (err) {
+//     console.error("Reset password error:", err);
+//     return res.status(500).json({ message: "Server error during password reset" });
+//   }
+// };
+
 const resetPassword = async (req, res) => {
   const token = req.body.token || "";
   const { newPassword } = req.body;
@@ -226,10 +258,10 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired token." });
     }
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = newPassword;  // Let schema handle bcrypt
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
-    await user.save();
+    await user.save(); // This will call your pre-save bcrypt hook
 
     return res.json({ message: "Password has been reset successfully." });
   } catch (err) {
@@ -237,6 +269,7 @@ const resetPassword = async (req, res) => {
     return res.status(500).json({ message: "Server error during password reset" });
   }
 };
+
 
 module.exports = {
   registerUser,
