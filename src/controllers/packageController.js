@@ -20,15 +20,15 @@ const getAllPackages = async (req, res) => {
 const addPackage = async (req, res) => {
   console.log("BODY RECEIVED:", req.body);
 
-  const { title, description, price, days, offers, type } = req.body;
+  const { title, description,includes, price, days, offers, type } = req.body;
   const imageUrl = req.file?.path || '';
 
-  if (!title || !description || !price || !days || !type) {
+  if (!title || !description ||!includes || !price || !days || !type ) {
     return res.status(400).json({ message: "Missing fields in request body" });
   }
 
   try {
-    const packageData = new Package({ title, description, price, days, offers, type, imageUrl });
+    const packageData = new Package({ title, description, includes, price, days, offers, type, imageUrl });
     await packageData.save();
     return res.status(201).json({ package: packageData });
   } catch (err) {
@@ -55,7 +55,7 @@ const getById = async (req, res, next) => {
 // Update package by ID
 const updatePackage = async (req, res, next) => {
   const id = req.params.id;
-  const { title, description, price, days, offers, type } = req.body;
+  const { title, description,includes, price, days, offers, type } = req.body;
   const imageUrl = req.file?.path;
 
   try {
@@ -64,6 +64,7 @@ const updatePackage = async (req, res, next) => {
 
     packageData.title = title;
     packageData.description = description;
+    packageData.includes=includes,
     packageData.price = price;
     packageData.days = days;
     packageData.offers = offers;

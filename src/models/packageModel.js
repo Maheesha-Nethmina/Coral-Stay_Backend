@@ -10,6 +10,10 @@ const packageSchema = new Schema({
     type: String,
     required: true
   },
+  includes:{
+    type: String,
+    required: true
+  },
   price: {
     type: Number,
     required: true
