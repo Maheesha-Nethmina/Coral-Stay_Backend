@@ -2,7 +2,7 @@ const User = require('../models/userModel');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Get all users 
+// Get all users
 const getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select('-password');
@@ -39,6 +39,7 @@ const updateUserRole = async (req, res) => {
   }
 };
 
+
 //update user details
 const updateUserDetails = async (req, res) => {
   const { id } = req.params;
@@ -48,20 +49,47 @@ const updateUserDetails = async (req, res) => {
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    if (name) user.name = name;
-    if (email) user.email = email;
-    if (role) user.role = role;
+    // Basic email validation
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    // Role validation
+    const allowedRoles = ['user', 'admin', 'deactivated'];
+    if (role && !allowedRoles.includes(role)) {
+      return res.status(400).json({ message: 'Invalid role provided' });
+    }
+
+    let isUpdated = false;
+
+    if (name && user.name !== name) {
+      user.name = name;
+      isUpdated = true;
+    }
+    if (email && user.email !== email) {
+      user.email = email;
+      isUpdated = true;
+    }
+    if (role && user.role !== role) {
+      user.role = role;
+      isUpdated = true;
+    }
+
+    if (!isUpdated) {
+      return res.status(200).json({ message: 'No changes detected', user });
+    }
 
     await user.save();
 
     res.status(200).json({ message: 'User details updated successfully', user });
   }
   catch (err) {
-    console.error('Error updating user details:', err);
+    console.error(`Error updating user details for ID ${id}:`, err.message);
     res.status(500).json({ message: 'Server error while updating user details' });
   }
 };
 
+module.exports = { updateUserDetails };
 
 // Send an email to user
 const sendEmailToUser = async (req, res) => {
