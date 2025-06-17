@@ -38,6 +38,7 @@ const updateUserRole = async (req, res) => {
     res.status(500).json({ message: 'Server error while updating user' });
   }
 };
+
 //update user details
 const updateUserDetails = async (req, res) => {
   const { id } = req.params;
