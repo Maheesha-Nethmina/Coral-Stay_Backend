@@ -39,12 +39,15 @@ app.use(cookieParser());
 const userRoutes = require('./src/routes/userRoutes');
 const eventRoutes = require('./src/routes/eventRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
-const packageRoutes=require('./src/routes/packageRoutes')
+const packageRoutes=require('./src/routes/packageRoutes');
+const reefTourRoutes = require('./src/routes/reeftourRoutes');
 
+// Use routes
 app.use('/authentication', userRoutes);
 app.use('/events', eventRoutes);
 app.use('/admin', adminRoutes);
 app.use('/package',packageRoutes)
+app.use('/reeftour', reefTourRoutes);
 
 // 404 fallback route
 app.use((req, res) => {
