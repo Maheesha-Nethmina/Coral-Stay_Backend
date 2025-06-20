@@ -1,14 +1,14 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-require('dotenv').config();
+const dotenv = require('dotenv');
+dotenv.config();
 
 const dbConnect = require('./src/config/dbConnect');
 dbConnect();
 
 const app = express();
 
-// Allowed origins for CORS
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
@@ -17,7 +17,6 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
 ];
 
-// CORS configuration with debug logging
 app.use(cors({
   origin: function (origin, callback) {
     // console.log('Incoming origin:', origin);
@@ -41,6 +40,7 @@ const eventRoutes = require('./src/routes/eventRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const packageRoutes=require('./src/routes/packageRoutes');
 const reefTourRoutes = require('./src/routes/reeftourRoutes');
+const contactRoutes = require('./src/routes/contactRoutes');
 
 // Use routes
 app.use('/authentication', userRoutes);
@@ -48,13 +48,20 @@ app.use('/events', eventRoutes);
 app.use('/admin', adminRoutes);
 app.use('/package',packageRoutes)
 app.use('/reeftour', reefTourRoutes);
+app.use('/authentication', userRoutes);
+app.use('/api/contact', contactRoutes);
 
-// 404 fallback route
+app.get('/', (req, res) => {
+  res.send('CoralStay backend is running');
+});
+
+// 404 fallback
+
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Server start
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
