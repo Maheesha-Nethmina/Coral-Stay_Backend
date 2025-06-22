@@ -8,16 +8,13 @@ dbConnect();
 
 const app = express();
 
+// Allow frontend CORS
 const allowedOrigins = [
   'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176',
   process.env.FRONTEND_URL
 ];
 
-
-// CORS configuration
+// CORS setup
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -26,25 +23,30 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true  // Make sure credentials are allowed
+  credentials: true
 }));
-
 
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
 
 // Routes
-const userRoutes = require('./src/routes/userRoutes');
-app.use('/authentication', userRoutes);
+const userRoutes = require('./src/routes/userRoutes'); // optional
+app.use('/authentication', userRoutes); // optional
 
-// 404 fallback (optional)
+const emailRoutes = require('./src/routes/emailRoutes');
+app.use('/contact', emailRoutes);
+
+const bookingRoutes = require('./src/routes/bookingRoutes');
+app.use('/bookings', bookingRoutes);
+
+// Fallback 404
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Server startup
+// Start server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`✅ Server is running on port ${PORT}`);
 });
