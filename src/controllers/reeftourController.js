@@ -1,4 +1,6 @@
 const ReefTour = require('../models/reeftourModel');
+const sheetBooking = require('../models/sheetBookingModel');
+const PriceSetting = require('../models/priceSettingModel');
 
 // Get blocked seats for a specific date and time slot
 const getBlockedSeats = async (req, res) => {
@@ -62,8 +64,112 @@ const unblockSeats = async (req, res) => {
 };
 
 
+//sheet booking for reeftour
+const bookSeats = async (req, res) => {
+  try {
+    const {userId,googleId,date,timeSlot,seats,user,totalAmount,} = req.body;
+
+    if (!date || !timeSlot || !seats || !Array.isArray(seats) || seats.length === 0 || !user) {
+      return res.status(400).json({ message: 'Missing required booking data.' });
+    }
+
+    const newBooking = new sheetBooking({userId,googleId,date,timeSlot,seats,user,totalAmount,});
+
+    await newBooking.save();
+
+    res.status(201).json({ message: 'Seat booking successful', booking: newBooking });
+  } catch (error) {
+    console.error('Error booking seats:', error);
+    res.status(500).json({ message: 'Server error while booking seats' });
+  }
+};
+
+//display booked seats
+const displayBookedSeats = async (req, res) => {
+  try {
+    const { date, timeSlot } = req.query;
+    if (!date || !timeSlot) {
+      return res.status(400).json({ message: 'Missing required query parameters' });
+    }
+
+    const bookings = await sheetBooking.find({ date, timeSlot });
+
+    if (bookings.length === 0) {
+      return res.status(404).json({ message: 'No bookings found for the specified date and time slot.' });
+    }
+
+    res.status(200).json({ bookings });
+  } catch (error) {
+    console.error('Error fetching booked seats:', error);
+    res.status(500).json({ message: 'Server error while fetching booked seats' });
+  }
+};
+
+// Display booking details
+const displayBookingDetails = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    if (!bookingId) {
+      return res.status(400).json({ message: 'Booking ID is required.' });
+    }
+
+    const booking = await sheetBooking.findById(bookingId).select(
+      'date timeSlot seats user.fullName user.email user.contactNumber'
+    );
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found.' });
+    }
+
+    res.status(200).json({ booking });
+  } catch (error) {
+    console.error('Error fetching booking details:', error);
+    res.status(500).json({ message: 'Server error while fetching booking details' });
+  }
+};
+
+//update price setting
+const updatePriceSetting = async (req, res) => {
+  try {
+    const { pricePerSeat, serviceFee, discount } = req.body;
+    if (pricePerSeat == null || serviceFee == null) {
+      return res.status(400).json({ message: 'Price per seat and service fee are required.' });
+    }
+    const priceSetting = await PriceSetting.findOneAndUpdate(
+      {},
+      { pricePerSeat, serviceFee, discount },
+      { new: true, upsert: true }
+    );
+    res.status(200).json({ message: 'Price setting updated successfully', priceSetting });
+  } catch (error) {
+    console.error('Error updating price setting:', error);
+    res.status(500).json({ message: 'Server error while updating price setting' });
+  }
+};
+
+// Get current price settings
+const getPriceSetting = async (req, res) => {
+  try {
+    const priceSetting = await PriceSetting.findOne({});
+    if (!priceSetting) {
+      return res.status(404).json({ message: 'Price setting not found' });
+    }
+    res.status(200).json(priceSetting);
+  } catch (error) {
+    console.error('Error getting price setting:', error);
+    res.status(500).json({ message: 'Server error while fetching price setting' });
+  }
+};
+
+
 module.exports = {
     blockSeats,
     getBlockedSeats,
-    unblockSeats
+    unblockSeats,
+    bookSeats,
+    displayBookedSeats,
+    displayBookingDetails,
+    updatePriceSetting,
+    getPriceSetting
 };

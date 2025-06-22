@@ -5,6 +5,11 @@ const reeftourController = require('../controllers/reeftourController');
 router.post('/block',reeftourController.blockSeats);
 router.get('/blocked',reeftourController.getBlockedSeats);
 router.post('/unblock', reeftourController.unblockSeats);
+router.post('/bookSeats', reeftourController.bookSeats);
+router.get('/displayBookedSeats', reeftourController.displayBookedSeats);
+router.get('/displayBookingDetails/:bookingId', reeftourController.displayBookingDetails);
+router.post('/updatePriceSetting', reeftourController.updatePriceSetting);
+router.get('/getPriceSetting', reeftourController.getPriceSetting);
 
 
 module.exports = router;
