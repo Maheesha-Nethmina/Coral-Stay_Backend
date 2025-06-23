@@ -9,6 +9,7 @@ dbConnect();
 
 const app = express();
 
+// Allow frontend CORS
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',

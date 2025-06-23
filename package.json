@@ -2,14 +2,14 @@
   "name": "backend",
   "version": "1.0.0",
   "main": "index.js",
+
   "scripts": {
-    "dev": "nodemon src/app.js",
+    "dev": "nodemon app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "cloudinary": "^1.41.3",
@@ -27,5 +27,14 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Maheesha-Nethmina/Coral-Stay_Backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Maheesha-Nethmina/Coral-Stay_Backend/issues"
+  },
+  "homepage": "https://github.com/Maheesha-Nethmina/Coral-Stay_Backend#readme",
+  "description": ""
 }
