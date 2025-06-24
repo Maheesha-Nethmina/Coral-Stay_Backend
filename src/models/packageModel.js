@@ -12,7 +12,7 @@ const packageSchema = new Schema({
   },
   includes:{
     type: String,
-    required: true
+    required:  true  
   },
   price: {
     type: Number,
