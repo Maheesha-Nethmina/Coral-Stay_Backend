@@ -63,7 +63,6 @@ const unblockSeats = async (req, res) => {
   }
 };
 
-
 //sheet booking for reeftour
 const bookSeats = async (req, res) => {
   try {
@@ -128,6 +127,84 @@ const displayBookingDetails = async (req, res) => {
     res.status(500).json({ message: 'Server error while fetching booking details' });
   }
 };
+//getAllBookings
+const getAllReefTourBookings = async (req, res) => {
+  try {
+    const bookings = await sheetBooking.find().sort({ date: 1, timeSlot: 1 });
+
+    const grouped = {};
+
+    bookings.forEach((booking) => {
+      const key = `${booking.date}-${booking.timeSlot}`;
+      if (!grouped[key]) {
+        grouped[key] = {
+          date: booking.date,
+          timeSlot: booking.timeSlot,
+          bookings: [],
+        };
+      }
+
+      grouped[key].bookings.push({
+        _id: booking._id,
+        fullName: booking.user.fullName,
+        email: booking.user.email,
+        contactNumber: booking.user.contactNumber,
+        seats: booking.seats,
+      });
+    });
+
+    res.status(200).json(Object.values(grouped));
+  } catch (error) {
+    console.error('Error fetching all bookings:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// delete booking
+const deleteSheetBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    if (!bookingId) {
+      return res.status(400).json({ message: 'Booking ID is required.' });
+    }
+
+    const deletedBooking = await sheetBooking.findByIdAndDelete(bookingId);
+
+    if (!deletedBooking) {
+      return res.status(404).json({ message: 'Booking not found.' });
+    }
+
+    res.status(200).json({ message: 'Booking deleted successfully', booking: deletedBooking });
+  } catch (error) {
+    console.error('Error deleting booking:', error);
+    res.status(500).json({ message: 'Server error while deleting booking' });
+  }
+};
+
+// //send email notification
+// const sendEmailNotification = async (booking) => {
+//   const nodemailer = require('nodemailer');
+//   const transporter = nodemailer.createTransport({
+//     service: 'gmail',
+//     auth: {
+//       user: process.env.EMAIL_USER,
+//       pass: process.env.EMAIL_PASS,
+//     },
+//   });
+//   const mailOptions = {
+//     from: process.env.EMAIL_USER,
+//     to: booking.user.email,
+//     subject: 'Reef Tour Booking Confirmation',
+//     text: `Dear ${booking.user.fullName},\n\nYour booking for the Reef Tour on ${booking.date} at ${booking.timeSlot} has been confirmed.\n\nBooked Seats: ${booking.seats.join(', ')}\nTotal Amount: ${booking.totalAmount}\n\nThank you for choosing us!\n\nBest regards,\nReef Tour Team`,
+//   };
+//   try {
+//     await transporter.sendMail(mailOptions);
+//     console.log('Email sent successfully');
+//   } catch (error) {
+//     console.error('Error sending email:', error);
+//   }
+// };
 
 //update price setting
 const updatePriceSetting = async (req, res) => {
@@ -162,7 +239,6 @@ const getPriceSetting = async (req, res) => {
   }
 };
 
-
 module.exports = {
     blockSeats,
     getBlockedSeats,
@@ -170,6 +246,9 @@ module.exports = {
     bookSeats,
     displayBookedSeats,
     displayBookingDetails,
+    getAllReefTourBookings,
     updatePriceSetting,
-    getPriceSetting
+    getPriceSetting,
+    deleteSheetBooking
 };
+
