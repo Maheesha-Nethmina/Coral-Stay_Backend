@@ -42,7 +42,7 @@ const adminRoutes = require('./src/routes/adminRoutes');
 const packageRoutes=require('./src/routes/packageRoutes');
 const reefTourRoutes = require('./src/routes/reeftourRoutes');
 const contactRoutes = require('./src/routes/contactRoutes');
-
+const weatherRoute=require('./src/routes/weatherRoute');
 // Use routes
 app.use('/authentication', userRoutes);
 app.use('/events', eventRoutes);
@@ -51,6 +51,7 @@ app.use('/package',packageRoutes)
 app.use('/reeftour', reefTourRoutes);
 app.use('/authentication', userRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/weather', weatherRoute);
 
 app.get('/', (req, res) => {
   res.send('CoralStay backend is running');
