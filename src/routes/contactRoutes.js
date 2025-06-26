@@ -6,3 +6,5 @@ const { contactFormHandler } = require('../controllers/contactController');
 router.post('/', contactFormHandler);
 
 module.exports = router;
+
+
