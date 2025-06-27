@@ -270,6 +270,32 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// Check if user is registered
+const isUserRegistered = async (req, res) => {
+  const { userId, email, nicNumber, googleId } = req.body;
+
+  if (!userId && !email && !nicNumber && !googleId) {
+    return res.status(400).json({ message: "At least one identifier is required" });
+  }
+
+  try {
+    const user = await User.findOne({
+      $or: [
+        userId ? { _id: userId } : null,
+        email ? { email } : null,
+        nicNumber ? { nicNumber } : null,
+        googleId ? { googleId } : null
+      ].filter(Boolean)
+    });
+
+    return res.status(200).json({ isRegistered: !!user });
+  } catch (error) {
+    console.error("isUserRegistered error:", error);
+    return res.status(500).json({ message: "Server error", isRegistered: false });
+  }
+};
+
+
 
 module.exports = {
   registerUser,
@@ -279,4 +305,5 @@ module.exports = {
   forgetPassword,
   resetPassword,
   googleSignIn,
+  isUserRegistered
 };

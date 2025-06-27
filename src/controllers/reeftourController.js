@@ -82,6 +82,38 @@ const bookSeats = async (req, res) => {
     res.status(500).json({ message: 'Server error while booking seats' });
   }
 };
+// const bookSeats = async (req, res) => {
+//   try {
+//     const loggedInUser = req.user; // Make sure your auth middleware sets req.user
+//     const { googleId, date, timeSlot, seats, totalAmount } = req.body;
+
+//     if (!date || !timeSlot || !seats || !Array.isArray(seats) || seats.length === 0) {
+//       return res.status(400).json({ message: 'Missing required booking data.' });
+//     }
+
+//     const newBooking = new sheetBooking({
+//       userId: loggedInUser._id,
+//       googleId: googleId || loggedInUser.googleId || null,
+//       date,
+//       timeSlot,
+//       seats,
+//       totalAmount,
+//       user: {
+//         fullName: loggedInUser.name,
+//         email: loggedInUser.email,
+//         contactNumber: loggedInUser.contactNumber,
+//         nicNumber: loggedInUser.nicNumber,
+//       }
+//     });
+
+//     await newBooking.save();
+
+//     res.status(201).json({ message: 'Seat booking successful', booking: newBooking });
+//   } catch (error) {
+//     console.error('Error booking seats:', error);
+//     res.status(500).json({ message: 'Server error while booking seats' });
+//   }
+// };
 
 //display booked seats
 const displayBookedSeats = async (req, res) => {
@@ -146,6 +178,7 @@ const getAllReefTourBookings = async (req, res) => {
 
       grouped[key].bookings.push({
         _id: booking._id,
+        userId: booking.userId,
         fullName: booking.user.fullName,
         email: booking.user.email,
         contactNumber: booking.user.contactNumber,
@@ -159,6 +192,7 @@ const getAllReefTourBookings = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 // delete booking
 const deleteSheetBooking = async (req, res) => {

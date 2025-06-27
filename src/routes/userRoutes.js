@@ -11,6 +11,7 @@ router.post('/logout', userController.logoutUser);
 router.post('/forget-password', userController.forgetPassword);
 router.post('/reset-password', userController.resetPassword);
 router.post("/google-signin", userController.googleSignIn);
+router.post('/isUserRegistered', userController.isUserRegistered);
 
 // Protected route
 router.get('/getme', protect, userController.getMe);
