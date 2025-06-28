@@ -119,22 +119,24 @@ const bookSeats = async (req, res) => {
 const displayBookedSeats = async (req, res) => {
   try {
     const { date, timeSlot } = req.query;
+
     if (!date || !timeSlot) {
       return res.status(400).json({ message: 'Missing required query parameters' });
     }
 
-    const bookings = await sheetBooking.find({ date, timeSlot });
+    // Ensure both date and timeSlot are matched exactly
+    const bookings = await sheetBooking.find({ date, timeSlot }).select('seats -_id');
 
-    if (bookings.length === 0) {
-      return res.status(404).json({ message: 'No bookings found for the specified date and time slot.' });
-    }
+    // Extract just the seat numbers
+    const bookedSeats = bookings.flatMap(booking => booking.seats);
 
-    res.status(200).json({ bookings });
+    res.status(200).json({ bookedSeats });
   } catch (error) {
     console.error('Error fetching booked seats:', error);
     res.status(500).json({ message: 'Server error while fetching booked seats' });
   }
 };
+
 
 // Display booking details
 const displayBookingDetails = async (req, res) => {
