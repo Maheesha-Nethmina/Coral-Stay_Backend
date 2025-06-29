@@ -18,6 +18,8 @@ const Event=require('../models/eventsModel');
     return res.status(200).json({events});
  }
 
+
+ // Add new event
 const addEvent = async (req, res) => {
     console.log("BODY RECEIVED:", req.body);  // 🟨 Debug line
 
@@ -55,6 +57,7 @@ const getById=async(req,res,next)=>{
     return res.status(200).json({event});
 }
 
+//Update Event
 const updateEvent = async (req, res, next) => {
   const id = req.params.id;
   const { title, description, date, mapUrl } = req.body;
@@ -79,7 +82,7 @@ const updateEvent = async (req, res, next) => {
 };
 
 
-//Delete user
+//Delete Event
 const deleteEvent=async(req,res,next)=>{
     const id=req.params.id;
     let event;   

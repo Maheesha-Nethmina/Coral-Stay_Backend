@@ -45,3 +45,4 @@ const getWeatherAlerts = async (req, res) => {
 };
 
 module.exports = { getWeatherAlerts };
+

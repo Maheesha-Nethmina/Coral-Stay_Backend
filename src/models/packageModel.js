@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
+// Define the schema for the package model
 const packageSchema = new Schema({
   title: {
     type: String,
