@@ -20,7 +20,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // console.log('Incoming origin:', origin);
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -35,39 +34,37 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Routes
+// Route imports
 const userRoutes = require('./src/routes/userRoutes');
 const eventRoutes = require('./src/routes/eventRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
-const packageRoutes=require('./src/routes/packageRoutes');
+const packageRoutes = require('./src/routes/packageRoutes');
 const reefTourRoutes = require('./src/routes/reeftourRoutes');
 const contactRoutes = require('./src/routes/contactRoutes');
-const weatherRoute=require('./src/routes/weatherRoute');
-const bookingRoutes = require('./src/routes/bookingRoutes');
+const weatherRoute = require('./src/routes/weatherRoute');
+const bookingRoutes = require('./src/routes/bookingRoutes'); 
+
 // Use routes
 app.use('/authentication', userRoutes);
 app.use('/events', eventRoutes);
 app.use('/admin', adminRoutes);
-app.use('/package',packageRoutes)
+app.use('/package', packageRoutes);
 app.use('/reeftour', reefTourRoutes);
-app.use('/authentication', userRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/weather', weatherRoute);
-app.use('/booking', bookingRoutes);
+app.use('/bookings', bookingRoutes); 
 
+// Root
 app.get('/', (req, res) => {
   res.send('CoralStay backend is running');
 });
 
 // 404 fallback
-
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  
 });
