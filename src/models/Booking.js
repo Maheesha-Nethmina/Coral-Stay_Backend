@@ -8,7 +8,7 @@ const bookingSchema = new mongoose.Schema({
   checkOut: { type: String, required: true },
   guestName: { type: String, required: true },
   guestEmail: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
