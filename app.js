@@ -52,7 +52,7 @@ app.use('/package', packageRoutes);
 app.use('/reeftour', reefTourRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/weather', weatherRoute);
-app.use('/bookings', bookingRoutes); 
+app.use('/bookings', bookingRoutes);
 
 // Root
 app.get('/', (req, res) => {
