@@ -5,6 +5,10 @@ const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+// Google OAuth2 Client
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 // Generate JWT token
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
@@ -14,10 +18,10 @@ const generateToken = (user) => {
 
 // Register User
 const registerUser = async (req, res) => {
-  const { name, email, phone, password, retypePassword, role } = req.body;
+  const { name, email, password, retypePassword, role } = req.body;
 
   try {
-    if (!name || !email || !phone || !password || !retypePassword) {
+    if (!name || !email || !password || !retypePassword) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -37,7 +41,7 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Email already registered" });
     }
 
-    const newUser = new User({ name, email, phone, password, role });
+    const newUser = new User({ name, email, password, role });
     await newUser.save();
 
     return res.status(201).json({ message: "User registered successfully" });
@@ -47,7 +51,7 @@ const registerUser = async (req, res) => {
   }
 };
 
-// Login User
+// Login User (normal login)
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -71,6 +75,7 @@ const loginUser = async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
+        name: user.name,
         role: user.role,
       },
       redirectTo: user.role === 'admin' ? '/admin' : '/',
@@ -78,6 +83,55 @@ const loginUser = async (req, res) => {
   } catch (err) {
     console.error("Login error:", err);
     return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Google Sign-In
+const googleSignIn = async (req, res) => {
+  try {
+    const { tokenId } = req.body;
+
+    const ticket = await client.verifyIdToken({
+      idToken: tokenId,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, sub: googleId } = payload;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = new User({
+        name,
+        email,
+        googleId,
+        password: crypto.randomBytes(16).toString("hex"),
+      });
+      await user.save();
+    }
+
+    const token = generateToken(user);
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      message: "Login successful",
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("Google Sign-In error:", err);
+    return res.status(401).json({ message: "Google Sign-In failed" });
   }
 };
 
@@ -98,7 +152,7 @@ const logoutUser = (req, res) => {
   }
 };
 
-// Get current authenticated user (uses middleware to populate req.user)
+//  Get current user
 const getMe = async (req, res) => {
   try {
     return res.status(200).json({ user: req.user });
@@ -107,15 +161,13 @@ const getMe = async (req, res) => {
   }
 };
 
-// Forget password
+//  Forgot Password
 const forgetPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
@@ -153,14 +205,46 @@ const forgetPassword = async (req, res) => {
   }
 };
 
+//  Reset Password
+// const resetPassword = async (req, res) => {
+//   const token = req.body.token || "";
+//   const { newPassword } = req.body;
 
-// Reset password
+//   if (!token || !newPassword) {
+//     return res.status(400).json({ message: "Token and new password required" });
+//   }
+
+//   try {
+//     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+//     const user = await User.findOne({
+//       resetPasswordToken: hashedToken,
+//       resetPasswordExpire: { $gt: Date.now() },
+//     });
+
+//     if (!user) {
+//       return res.status(400).json({ message: "Invalid or expired token." });
+//     }
+
+//     user.password = await bcrypt.hash(newPassword, 10);
+//     user.resetPasswordToken = undefined;
+//     user.resetPasswordExpire = undefined;
+//     await user.save();
+
+//     return res.json({ message: "Password has been reset successfully." });
+//   } catch (err) {
+//     console.error("Reset password error:", err);
+//     return res.status(500).json({ message: "Server error during password reset" });
+//   }
+// };
+
 const resetPassword = async (req, res) => {
   const token = req.body.token || "";
   const { newPassword } = req.body;
 
-  if (!token) return res.status(400).json({ message: "Missing token." });
-  if (!newPassword) return res.status(400).json({ message: "Missing password." });
+  if (!token || !newPassword) {
+    return res.status(400).json({ message: "Token and new password required" });
+  }
 
   try {
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
@@ -174,10 +258,10 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired token." });
     }
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = newPassword;  // Let schema handle bcrypt
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
-    await user.save();
+    await user.save(); // This will call your pre-save bcrypt hook
 
     return res.json({ message: "Password has been reset successfully." });
   } catch (err) {
@@ -186,6 +270,52 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// Check if user is registered
+const isUserRegistered = async (req, res) => {
+  const { userId, email, nicNumber, googleId } = req.body;
+
+  if (!userId && !email && !nicNumber && !googleId) {
+    return res.status(400).json({ message: "At least one identifier is required" });
+  }
+
+  try {
+    const user = await User.findOne({
+      $or: [
+        userId ? { _id: userId } : null,
+        email ? { email } : null,
+        nicNumber ? { nicNumber } : null,
+        googleId ? { googleId } : null
+      ].filter(Boolean)
+    });
+
+    return res.status(200).json({ isRegistered: !!user });
+  } catch (error) {
+    console.error("isUserRegistered error:", error);
+    return res.status(500).json({ message: "Server error", isRegistered: false });
+  }
+};
+
+//user details to profile
+const userDetailsToProfile = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const user = await User.findById(userId).select("name email");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({
+      name: user.name,
+      email: user.email,
+    });
+  } catch (err) {
+    console.error("Error fetching user details:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 
 module.exports = {
   registerUser,
@@ -193,5 +323,8 @@ module.exports = {
   logoutUser,
   getMe,
   forgetPassword,
-  resetPassword
+  resetPassword,
+  googleSignIn,
+  isUserRegistered,
+  userDetailsToProfile
 };
