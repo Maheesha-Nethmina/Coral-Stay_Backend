@@ -1,4 +1,6 @@
 const User = require('../models/userModel');
+const CancellationRequest = require('../models/cancellationRequestModel');
+const sheetBooking = require('../models/sheetBookingModel'); 
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
@@ -133,10 +135,82 @@ const sendEmailToUser = async (req, res) => {
   }
 };
 
+//Cancellation request handler
+
+
+
+// Set up Nodemailer (example with Gmail - use app password!)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,  
+  },
+});
+
+const requestCancellation = async (req, res) => {
+  try {
+    const { userId, bookingId, reason, refundAmount, type } = req.body;
+
+    const booking = await sheetBooking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const newCancellation = new CancellationRequest({
+      userId,
+      bookingId,
+      type,
+      date: booking.date,
+      timeSlot: booking.timeSlot || '',
+      reason,
+      amount: booking.totalAmount,
+      refundAmount,
+    });
+
+    await newCancellation.save();
+
+    // Send cancellation confirmation email
+    const mailOptions = {
+      from: 'yourappemail@gmail.com',
+      to: user.email,
+      subject: 'Your Reef Tour Cancellation Request is Received',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 10px;">
+          <h2>Hello ${user.name},</h2>
+          <p>Your cancellation request has been received for the following booking:</p>
+          <ul>
+            <li><strong>Date:</strong> ${booking.date}</li>
+            <li><strong>Time Slot:</strong> ${booking.timeSlot}</li>
+            <li><strong>Refund Amount:</strong> Rs. ${refundAmount}</li>
+          </ul>
+          <p><strong>Reason Provided:</strong> ${reason}</p>
+          <p>We are currently processing your request. You will receive another email once it's completed.</p>
+          <p>Thank you,<br/>CoralStay Team</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(201).json({ message: 'Cancellation request submitted and email sent' });
+
+  } catch (err) {
+    console.error('Cancellation request error:', err);
+    res.status(500).json({ message: 'Server error while processing cancellation' });
+  }
+};
+
 
 module.exports = {
   getAllUsers,
   updateUserRole,
   updateUserDetails,
-  sendEmailToUser
+  sendEmailToUser,
+  requestCancellation
 };
