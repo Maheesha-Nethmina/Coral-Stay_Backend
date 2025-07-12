@@ -15,7 +15,7 @@ class WeatherForecast {
   checkSafety() {
     if (this.WeatherCondition === 'Thunderstorm') {
       this.IsSafe = false;
-    } else if (this.WeatherCondition === 'Rain' && this.RainVolume > 2.0) {
+    } else if (this.WeatherCondition === 'Rain' && this.RainVolume > 3.0) {
       this.IsSafe = false;
     } else if (this.WindSpeed > 8.5) {
       this.IsSafe = false;
