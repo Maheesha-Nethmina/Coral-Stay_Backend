@@ -206,11 +206,60 @@ const requestCancellation = async (req, res) => {
   }
 };
 
+// Get all cancellation requests
+const getAllCancellationRequests = async (req, res) => {
+  try {
+    const requests = await CancellationRequest.find()
+      .populate('userId', '-password')
+      .populate('bookingId')
+      .sort({ date: 1 });
+
+    res.status(200).json(requests);
+  } catch (err) {
+    console.error('Error fetching cancellation requests:', err);
+    res.status(500).json({ message: 'Server error while fetching cancellation requests' });
+  }
+};
+
+// Accept cancellation request and delete booking
+const acceptCancellationRequest = async (req, res) => {
+  try {
+    const cancellation = await CancellationRequest.findById(req.params.id);
+
+    if (!cancellation) {
+      return res.status(404).json({ message: 'Cancellation request not found' });
+    }
+
+    if (cancellation.type === 'reefTour') {
+      const deleted = await SheetBooking.findByIdAndDelete(cancellation.bookingId);
+
+      if (!deleted) {
+        return res.status(404).json({ message: 'Booking not found for reefTour' });
+      }
+    }
+    //add other types when it implements
+
+    // Optional: delete the cancellation request OR update status
+    await CancellationRequest.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({ message: 'Cancellation request accepted and booking deleted' });
+  } catch (err) {
+    console.error('Error accepting cancellation:', err);
+    res.status(500).json({ message: 'Server error while accepting cancellation' });
+  }
+};
+
+module.exports = { acceptCancellationRequest };
+
+
+
 
 module.exports = {
   getAllUsers,
   updateUserRole,
   updateUserDetails,
   sendEmailToUser,
-  requestCancellation
+  requestCancellation,
+  getAllCancellationRequests,
+  acceptCancellationRequest
 };

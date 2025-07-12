@@ -12,7 +12,7 @@ const cancellationRequestSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['reefTour', 'hotelRoom', 'specialPackage'], // You can expand this list
+    enum: ['reefTour', 'hotelRoom', 'specialPackage'], 
     required: true,
   },
   date: {
@@ -20,7 +20,7 @@ const cancellationRequestSchema = new mongoose.Schema({
     required: true,
   },
   timeSlot: {
-    type: String, // Optional for hotel — keep null or empty if not applicable
+    type: String, 
     default: '',
   },
   reason: {
