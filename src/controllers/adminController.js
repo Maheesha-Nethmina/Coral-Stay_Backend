@@ -147,7 +147,7 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,  
   },
 });
-
+// Request cancellation
 const requestCancellation = async (req, res) => {
   try {
     const { userId, bookingId, reason, refundAmount, type } = req.body;
@@ -206,11 +206,95 @@ const requestCancellation = async (req, res) => {
   }
 };
 
+// Get all cancellation requests
+const getAllCancellationRequests = async (req, res) => {
+  try {
+    const requests = await CancellationRequest.find()
+      .populate('userId', '-password')
+      .populate('bookingId')
+      .sort({ date: 1 });
+
+    res.status(200).json(requests);
+  } catch (err) {
+    console.error('Error fetching cancellation requests:', err);
+    res.status(500).json({ message: 'Server error while fetching cancellation requests' });
+  }
+};
+
+//Accept cancellation request and send HTML email
+const acceptCancellationRequest = async (req, res) => {
+  try {
+    const cancellation = await CancellationRequest.findById(req.params.id);
+    if (!cancellation) {
+      return res.status(404).json({ message: 'Cancellation request not found' });
+    }
+
+    // Get user info from cancellation.userId
+    const user = await User.findById(cancellation.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found for this cancellation' });
+    }
+
+    let booking = null;
+    if (cancellation.type === 'reefTour') {
+      booking = await sheetBooking.findByIdAndDelete(cancellation.bookingId);
+      if (!booking) {
+        return res.status(404).json({ message: 'Booking not found for reefTour' });
+      }
+    }
+
+    await CancellationRequest.findByIdAndDelete(req.params.id);
+
+    // Email Logic
+    const refundAmount = cancellation.refundAmount || 0;
+    const reason = cancellation.reason || 'N/A';
+    const date = booking?.date || 'N/A';
+    const timeSlot = booking?.timeSlot || 'N/A';
+    const userName = user.name || 'Customer';
+
+    const mailOptions = {
+      from: `CoralStay <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: 'Your cancellation request has been accepted by CoralStay.',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 10px;">
+          <h2>Hello ${userName},</h2>
+          <p>Your cancellation request has been accepted and your booking has been successfully cancelled.</p>
+          <h4>Booking Details:</h4>
+          <ul>
+            <li><strong>Date:</strong> ${date}</li>
+            <li><strong>Time Slot:</strong> ${timeSlot}</li>
+            <li><strong>Refund Amount:</strong> Rs. ${refundAmount}</li>
+          </ul>
+          <p><strong>Reason Provided:</strong> ${reason}</p>
+          <p>If you have any questions or need further assistance, feel free to contact us.</p>
+          <br />
+          <p>Thank you,<br/>CoralStay Team</p>
+        </div>
+      `,
+    };
+
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log('Email sent:', info.response);
+    } catch (emailErr) {
+      console.error('Error sending email:', emailErr);
+    }
+
+    res.status(200).json({ message: 'Cancellation accepted, booking deleted, and email sent.' });
+  } catch (err) {
+    console.error('Error accepting cancellation:', err);
+    res.status(500).json({ message: 'Server error while accepting cancellation' });
+  }
+};
+
 
 module.exports = {
   getAllUsers,
   updateUserRole,
   updateUserDetails,
   sendEmailToUser,
-  requestCancellation
+  requestCancellation,
+  getAllCancellationRequests,
+  acceptCancellationRequest
 };
