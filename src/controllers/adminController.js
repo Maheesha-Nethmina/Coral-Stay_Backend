@@ -1,6 +1,7 @@
 const User = require('../models/userModel');
 const CancellationRequest = require('../models/cancellationRequestModel');
-const sheetBooking = require('../models/sheetBookingModel'); 
+const sheetBooking = require('../models/sheetBookingModel');
+const booking = require('../models/Booking');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
@@ -288,6 +289,81 @@ const acceptCancellationRequest = async (req, res) => {
   }
 };
 
+// Get all room bookings
+const getAllRoomBookings = async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    const bookings = await booking
+      .find({ checkIn: { $gte: today } })
+      .sort({ checkIn: 1 });
+
+    res.status(200).json(bookings);
+  } catch (err) {
+    console.error('Error fetching room bookings:', err);
+    res.status(500).json({ message: 'Server error while fetching room bookings' });
+  }
+};
+
+
+// Delete booking and send cancellation email
+const deleteBooking = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const deletedBooking = await booking.findByIdAndDelete(bookingId);
+
+    if (!deletedBooking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Set up email transport
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    // Compose detailed email
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: deletedBooking.guestEmail,
+      subject: 'Booking Cancellation Notice - CoralStay',
+      text: `
+Dear ${deletedBooking.guestName},
+
+We regret to inform you that your hotel booking with CoralStay has been cancelled.
+
+Here are your booking details:
+
+🛏 Room: ${deletedBooking.roomTitle}
+📦 Package: ${deletedBooking.packageType}
+📅 Check-in Date: ${deletedBooking.checkIn}
+📅 Check-out Date: ${deletedBooking.checkOut}
+
+We sincerely apologize for any inconvenience this may cause. If you have any questions or need assistance, feel free to contact us at coralstayhelp@gmail.com or call our support line.
+
+Thank you for your understanding.
+
+Warm regards,
+The CoralStay Team
+      `.trim(),
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ message: 'Booking deleted and email sent' });
+  } catch (error) {
+    console.error('Error deleting booking:', error);
+    res.status(500).json({ message: 'Failed to delete booking and send email' });
+  }
+};
+
+
+
+
+
 
 module.exports = {
   getAllUsers,
@@ -296,5 +372,7 @@ module.exports = {
   sendEmailToUser,
   requestCancellation,
   getAllCancellationRequests,
-  acceptCancellationRequest
+  acceptCancellationRequest,
+  getAllRoomBookings,
+  deleteBooking
 };
