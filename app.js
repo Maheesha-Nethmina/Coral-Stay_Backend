@@ -45,7 +45,7 @@ const reefTourRoutes = require('./src/routes/reeftourRoutes');
 const contactRoutes = require('./src/routes/contactRoutes');
 const weatherRoute = require('./src/routes/weatherRoute');
 const bookingRoutes = require('./src/routes/bookingRoutes');
-
+const weatherAlertRoutes = require('./src/routes/weatherAlertRoutes');
 // Use routes with appropriate prefixes
 app.use('/authentication', userRoutes);
 app.use('/events', eventRoutes);
@@ -55,6 +55,7 @@ app.use('/reeftour', reefTourRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/weather', weatherRoute);
 app.use('/bookings', bookingRoutes);
+app.use('/api/weather-alerts', weatherAlertRoutes);
 
 // Root route
 app.get('/', (req, res) => {
