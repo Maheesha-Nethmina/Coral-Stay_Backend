@@ -16,7 +16,6 @@ const sendUnsafeWeatherEmail = async (req, res) => {
     const { email, fullName } = booking.user;
     const { date, timeSlot } = booking;
 
-    // Setup transporter
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -25,20 +24,47 @@ const sendUnsafeWeatherEmail = async (req, res) => {
       }
     });
 
+    const htmlContent = `
+      <p>Dear <strong>${fullName}</strong>,</p>
+
+      <p>We regret to inform you that the weather conditions on <strong>${date}</strong> during your scheduled tour at <strong>${timeSlot}</strong> are marked as <span style="color:red;"><strong>unsafe</strong></span> for boat rides.</p>
+
+      <p>We highly recommend rescheduling your booking to ensure your safety and comfort.</p>
+
+      <p>If you have any questions or would like to reschedule, feel free to contact us using the information below.</p>
+
+      <br/>
+
+      <hr style="border: none; border-top: 1px solid #ccc; margin: 20px 0;" />
+
+      <p style="font-size: 16px; font-weight: bold;">Contact Us</p>
+      <p><strong>Coral Stay Beach Resort</strong></p>
+      <p>Map No 123/A Hikkaduwa</p>
+      <p><strong>Email:</strong> <a href="mailto:coralstayhikkaduwa@gmail.com">coralstayhikkaduwa@gmail.com</a></p>
+      <p><strong>Phone:</strong> <a href="tel:+94766210979">0766210979</a></p>
+      <p><strong>WhatsApp:</strong> <a href="https://wa.me/94766210979">0766210979</a></p>
+
+      <p style="margin-top: 10px;">
+        <a href="https://facebook.com" style="margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/24/145/145802.png" alt="Facebook" /></a>
+        <a href="https://twitter.com" style="margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/24/145/145812.png" alt="Twitter" /></a>
+        <a href="https://instagram.com" style="margin-right: 10px;"><img src="https://cdn-icons-png.flaticon.com/24/2111/2111463.png" alt="Instagram" /></a>
+        <a href="https://linkedin.com"><img src="https://cdn-icons-png.flaticon.com/24/145/145807.png" alt="LinkedIn" /></a>
+      </p>
+
+      <p style="margin-top: 20px;">Thank you,<br/>Coral Stay Beach Resort</p>
+    `;
+
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"Coral Stay Beach Resort" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `Important Notice: Unsafe Weather Conditions for Your Boat Tour`,
-      text: `Hello ${fullName},
+      text: `Dear ${fullName},
 
-This is to inform you that the weather conditions on ${date} during your scheduled tour at ${timeSlot} are currently marked as unsafe for boat rides due to weather forecasts.
-
-We highly recommend rescheduling your booking to ensure your safety.
-
-Please contact us at your earliest convenience.
+The weather conditions on ${date} at ${timeSlot} are unsafe for boat rides. We recommend rescheduling your tour for safety.
 
 Thank you,
-`
+Coral Stay Beach Resort`,
+      html: htmlContent
     };
 
     await transporter.sendMail(mailOptions);
