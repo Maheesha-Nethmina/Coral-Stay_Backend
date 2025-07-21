@@ -1,18 +1,23 @@
-// This is a JS class (not a database model like Mongoose)
-
 class WeatherForecast {
-  constructor(date, time, condition, humidity, windSpeed) {
+  constructor(date, time, condition, description, temperature, humidity, windSpeed, cloudiness, rainVolume = 0) {
     this.TourBookingDate = date;
     this.TourBookingTime = time;
     this.WeatherCondition = condition;
+    this.Description = description;
+    this.Temperature = temperature;
     this.Humidity = humidity;
     this.WindSpeed = windSpeed;
-    this.IsSafe = true; // Default
+    this.Cloudiness = cloudiness;
+    this.RainVolume = rainVolume;
+    this.IsSafe = true; // Default assumption
   }
 
-  // Evaluate weather safety
   checkSafety() {
-    if (["Rain", "Thunderstorm"].includes(this.WeatherCondition) || this.WindSpeed > 7.5) {
+    if (this.WeatherCondition === 'Thunderstorm') {
+      this.IsSafe = false;
+    } else if (this.WeatherCondition === 'Rain' && this.RainVolume > 2.0) {
+      this.IsSafe = false;
+    } else if (this.WindSpeed > 7.5) {
       this.IsSafe = false;
     }
     return this.IsSafe;

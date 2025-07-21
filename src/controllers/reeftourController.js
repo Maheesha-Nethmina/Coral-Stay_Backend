@@ -1,6 +1,8 @@
 const ReefTour = require('../models/reeftourModel');
 const sheetBooking = require('../models/sheetBookingModel');
 const PriceSetting = require('../models/priceSettingModel');
+const mongoose = require('mongoose');
+
 
 // Get blocked seats for a specific date and time slot
 const getBlockedSeats = async (req, res) => {
@@ -82,38 +84,6 @@ const bookSeats = async (req, res) => {
     res.status(500).json({ message: 'Server error while booking seats' });
   }
 };
-// const bookSeats = async (req, res) => {
-//   try {
-//     const loggedInUser = req.user; // Make sure your auth middleware sets req.user
-//     const { googleId, date, timeSlot, seats, totalAmount } = req.body;
-
-//     if (!date || !timeSlot || !seats || !Array.isArray(seats) || seats.length === 0) {
-//       return res.status(400).json({ message: 'Missing required booking data.' });
-//     }
-
-//     const newBooking = new sheetBooking({
-//       userId: loggedInUser._id,
-//       googleId: googleId || loggedInUser.googleId || null,
-//       date,
-//       timeSlot,
-//       seats,
-//       totalAmount,
-//       user: {
-//         fullName: loggedInUser.name,
-//         email: loggedInUser.email,
-//         contactNumber: loggedInUser.contactNumber,
-//         nicNumber: loggedInUser.nicNumber,
-//       }
-//     });
-
-//     await newBooking.save();
-
-//     res.status(201).json({ message: 'Seat booking successful', booking: newBooking });
-//   } catch (error) {
-//     console.error('Error booking seats:', error);
-//     res.status(500).json({ message: 'Server error while booking seats' });
-//   }
-// };
 
 //display booked seats
 const displayBookedSeats = async (req, res) => {
@@ -218,30 +188,6 @@ const deleteSheetBooking = async (req, res) => {
   }
 };
 
-// //send email notification
-// const sendEmailNotification = async (booking) => {
-//   const nodemailer = require('nodemailer');
-//   const transporter = nodemailer.createTransport({
-//     service: 'gmail',
-//     auth: {
-//       user: process.env.EMAIL_USER,
-//       pass: process.env.EMAIL_PASS,
-//     },
-//   });
-//   const mailOptions = {
-//     from: process.env.EMAIL_USER,
-//     to: booking.user.email,
-//     subject: 'Reef Tour Booking Confirmation',
-//     text: `Dear ${booking.user.fullName},\n\nYour booking for the Reef Tour on ${booking.date} at ${booking.timeSlot} has been confirmed.\n\nBooked Seats: ${booking.seats.join(', ')}\nTotal Amount: ${booking.totalAmount}\n\nThank you for choosing us!\n\nBest regards,\nReef Tour Team`,
-//   };
-//   try {
-//     await transporter.sendMail(mailOptions);
-//     console.log('Email sent successfully');
-//   } catch (error) {
-//     console.error('Error sending email:', error);
-//   }
-// };
-
 //update price setting
 const updatePriceSetting = async (req, res) => {
   try {
@@ -275,6 +221,31 @@ const getPriceSetting = async (req, res) => {
   }
 };
 
+// Display bookings for a specific user
+const displayUserBookings = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    // console.log('Requested bookings for userId:', userId);
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+
+    const bookings = await sheetBooking.find({
+      userId: new mongoose.Types.ObjectId(userId),
+    })
+      .select('date timeSlot seats createdAt totalAmount')
+      .sort({ date: -1 })
+      .lean();
+
+    // console.log('Found bookings:', bookings.length);
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error('Error fetching user bookings:', error);
+    res.status(500).json({ message: 'Server error while fetching user bookings' });
+  }
+};
+
 module.exports = {
     blockSeats,
     getBlockedSeats,
@@ -285,6 +256,7 @@ module.exports = {
     getAllReefTourBookings,
     updatePriceSetting,
     getPriceSetting,
-    deleteSheetBooking
+    deleteSheetBooking,
+    displayUserBookings
 };
 

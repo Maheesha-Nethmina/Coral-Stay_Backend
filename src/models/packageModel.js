@@ -31,6 +31,18 @@ const packageSchema = new Schema({
     enum: ['hotel', 'boatTour', 'Both'],
     required: true 
   },
+  roomtype:{
+    type: String,
+    enum: ['Deluxe', 'Premier','Royal','PremierOcean','Presidential'],
+    required: function() {
+    return this.type === 'hotel' || this.type === 'Both';
+  }
+
+  },
+  seatNumber: {
+    type: Number,
+    
+  },
    imageUrl: { 
         type: String, default: ''
      }

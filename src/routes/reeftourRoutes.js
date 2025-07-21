@@ -12,6 +12,7 @@ router.post('/updatePriceSetting', reeftourController.updatePriceSetting);
 router.get('/getPriceSetting', reeftourController.getPriceSetting);
 router.get('/getAllReefTourBookings', reeftourController.getAllReefTourBookings);
 router.delete('/deleteSheetBooking/:bookingId', reeftourController.deleteSheetBooking);
+router.get('/displayUserBookings/:userId', reeftourController.displayUserBookings);
 
 
 
