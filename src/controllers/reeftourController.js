@@ -246,9 +246,6 @@ const displayUserBookings = async (req, res) => {
   }
 };
 
-
-
-
 module.exports = {
     blockSeats,
     getBlockedSeats,

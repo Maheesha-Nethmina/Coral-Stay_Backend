@@ -9,7 +9,7 @@ dbConnect();
 
 const app = express();
 
-// Allow frontend CORS
+// Allowed origins for CORS
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
@@ -18,8 +18,10 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
 ];
 
+// Enable CORS with dynamic origin checking
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -34,7 +36,7 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Route imports
+// Routes
 const userRoutes = require('./src/routes/userRoutes');
 const eventRoutes = require('./src/routes/eventRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
@@ -42,9 +44,9 @@ const packageRoutes = require('./src/routes/packageRoutes');
 const reefTourRoutes = require('./src/routes/reeftourRoutes');
 const contactRoutes = require('./src/routes/contactRoutes');
 const weatherRoute = require('./src/routes/weatherRoute');
-const bookingRoutes = require('./src/routes/bookingRoutes'); 
-
-// Use routes
+const bookingRoutes = require('./src/routes/bookingRoutes');
+const weatherAlertRoutes = require('./src/routes/weatherAlertRoutes');
+// Use routes with appropriate prefixes
 app.use('/authentication', userRoutes);
 app.use('/events', eventRoutes);
 app.use('/admin', adminRoutes);
@@ -53,13 +55,14 @@ app.use('/reeftour', reefTourRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/weather', weatherRoute);
 app.use('/bookings', bookingRoutes);
+app.use('/api/weather-alerts', weatherAlertRoutes);
 
-// Root
+// Root route
 app.get('/', (req, res) => {
   res.send('CoralStay backend is running');
 });
 
-// 404 fallback
+// 404 fallback for unknown routes
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });

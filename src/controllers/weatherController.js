@@ -1,47 +1,68 @@
 const axios = require('axios');
 const WeatherForecast = require('../models/WeatherForecast');
 
-const getWeatherAlerts = async (req, res) => {
+const getWeatherForecast = async (req, res) => {
   const lat = 6.14; // Hikkaduwa
   const lon = 80.10;
   const apiKey = process.env.WEATHER_API_KEY;
 
   try {
-    // Fetch weather forecast
     const response = await axios.get('https://api.openweathermap.org/data/2.5/forecast', {
-      params: { lat, lon, appid: apiKey, units: 'metric' }
+      params: {
+        lat,
+        lon,
+        appid: apiKey,
+        units: 'metric',
+      },
     });
 
-    const forecasts = response.data.list;
-    const alerts = [];
+    const forecastList = response.data.list;
+    const results = [];
 
-    // Process forecast entries (every 3 hours)
-    forecasts.forEach(entry => {
+    forecastList.forEach(entry => {
+      const [date, time] = entry.dt_txt.split(' ');
+      const condition = entry.weather[0].main;
+      const description = entry.weather[0].description;
+      const temperature = entry.main.temp;
+      const humidity = entry.main.humidity;
+      const windSpeed = entry.wind.speed;
+      const cloudiness = entry.clouds.all;
+      const rainVolume = entry.rain?.['3h'] || 0;
+
       const forecast = new WeatherForecast(
-        entry.dt_txt.split(" ")[0],         // Date
-        entry.dt_txt.split(" ")[1],         // Time
-        entry.weather[0].main,              // Condition
-        entry.main.humidity,                // Humidity
-        entry.wind.speed                    // Wind speed
+        date,
+        time,
+        condition,
+        description,
+        temperature,
+        humidity,
+        windSpeed,
+        cloudiness,
+        rainVolume
       );
 
-      if (!forecast.checkSafety()) {
-        alerts.push({
-          date: forecast.TourBookingDate,
-          time: forecast.TourBookingTime,
-          condition: forecast.WeatherCondition,
-          wind: forecast.WindSpeed,
-          reason: `${forecast.WeatherCondition} with wind ${forecast.WindSpeed} m/s`
-        });
-      }
+      forecast.checkSafety();
+
+      results.push({
+        date,
+        time,
+        condition,
+        description,
+        temperature,
+        humidity,
+        windSpeed,
+        cloudiness,
+        rainVolume,
+        isSafe: forecast.IsSafe,
+        suggestion: forecast.IsSafe ? '✅ Recommended slot' : '❌ Unsafe for boat rides',
+      });
     });
 
-    res.json({ alerts });
-
+    res.json({ forecast: results });
   } catch (error) {
     console.error('Error fetching weather:', error.message);
-    res.status(500).json({ error: 'Failed to get weather alerts' });
+    res.status(500).json({ error: 'Failed to fetch weather forecast' });
   }
 };
 
-module.exports = { getWeatherAlerts };
+module.exports = { getWeatherForecast };
