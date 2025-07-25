@@ -1,37 +1,37 @@
-// bookingController.js
-
 const Booking = require('../models/Booking');
 const PriceSetting = require('../models/priceSettingModel');
 const nodemailer = require('nodemailer');
 
-// Define price matrix
+// Price matrix same as before
 const packagePrices = {
   'Deluxe Room': {
     'Full Board Package': 20000,
     'Half Board Package': 15000,
-    'Room Only Package': 10000
+    'Room Only Package': 10000,
   },
   'Premier Room': {
     'Full Board Package': 30000,
     'Half Board Package': 25000,
-    'Room Only Package': 20000
+    'Room Only Package': 20000,
   },
   'Royal Suite Suite': {
     'Full Board Package': 35000,
     'Half Board Package': 32000,
-    'Room Only Package': 30000
+    'Room Only Package': 30000,
   },
   'Premier Ocean Room': {
     'Full Board Package': 40000,
     'Half Board Package': 35000,
-    'Room Only Package': 30000
+    'Room Only Package': 30000,
   },
   'Presidential Suite': {
     'Full Board Package': 55000,
     'Half Board Package': 50000,
-    'Room Only Package': 45000
-  }
+    'Room Only Package': 45000,
+  },
 };
+
+const TOTAL_ROOMS_PER_ROOMTYPE = 5;
 
 exports.createBooking = async (req, res) => {
   try {
@@ -48,7 +48,7 @@ exports.createBooking = async (req, res) => {
       guestEmail,
       guestName,
       nicNumber,
-      contactNumber
+      contactNumber,
     } = req.body;
 
     if (checkIn >= checkOut) {
@@ -63,6 +63,19 @@ exports.createBooking = async (req, res) => {
     const basePrice = roomPackages[packageType];
     if (!basePrice) {
       return res.status(400).json({ error: `Invalid package type '${packageType}' for room '${roomTitle}'` });
+    }
+
+    const overlappingBookings = await Booking.find({
+      roomId,
+      checkIn: { $lt: checkOut },
+      checkOut: { $gt: checkIn },
+    });
+
+    const bookedQuantity = overlappingBookings.reduce((sum, booking) => sum + (booking.quantity || 0), 0);
+    const availableRooms = TOTAL_ROOMS_PER_ROOMTYPE - bookedQuantity;
+
+    if (availableRooms < quantity) {
+      return res.status(400).json({ error: `Only ${availableRooms} rooms available for the selected dates.` });
     }
 
     const priceSettings = await PriceSetting.findOne().sort({ updatedAt: -1 });
@@ -83,12 +96,12 @@ exports.createBooking = async (req, res) => {
       guestName,
       nicNumber,
       contactNumber,
-      totalAmount
+      totalAmount,
     });
+
     await booking.save();
     console.log('✅ Booking saved.');
 
-    // Only send emails if all credentials are present
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS && process.env.ADMIN_EMAIL) {
       const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -101,28 +114,92 @@ exports.createBooking = async (req, res) => {
       const formatRs = (amount) =>
         `Rs. ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`;
 
+      // --- Email HTML ---
       const emailHTML = `
-        <h2>Coral Stay Booking Confirmation</h2>
-        <p><strong>Guest Name:</strong> ${guestName}</p>
-        <p><strong>NIC:</strong> ${nicNumber}</p>
-        <p><strong>Contact:</strong> ${contactNumber}</p>
-        <p><strong>Email:</strong> ${guestEmail}</p>
-        <hr />
-        <p><strong>Room:</strong> ${roomTitle}</p>
-        <p><strong>Package:</strong> ${packageType}</p>
-        <p><strong>Rooms Booked:</strong> ${quantity}</p>
-        <p><strong>Check-in:</strong> ${new Date(checkIn).toDateString()}</p>
-        <p><strong>Check-out:</strong> ${new Date(checkOut).toDateString()}</p>
-        <hr />
-        <h3>Invoice:</h3>
-        <p>Price per Room: ${formatRs(basePrice)}</p>
-        <p>Subtotal: ${formatRs(subtotal)}</p>
-        <p>Service Fee: ${formatRs(serviceFee)}</p>
-        <p>Discount: -${formatRs(discount)}</p>
-        <h4>Total Amount: ${formatRs(totalAmount)}</h4>
-        <hr />
-        <p>Thank you for choosing Coral Stay 🌊</p>
+        <div style="font-family:sans-serif;max-width:600px;margin:auto;">
+          <div style="background:#023545;padding:24px 0 12px 0;text-align:center;">
+            <img src="https://cdn-icons-png.flaticon.com/512/190/190411.png" alt="Coral Stay" style="width:60px;margin-bottom:8px;" />
+            <h2 style="color:#fff;margin:0;">Thank you for your booking, <span style="color:#ffd700;">${guestName}</span>!</h2>
+          </div>
+          <div style="background:#f7fafc;padding:24px 32px 16px 32px;">
+            <p style="font-size:17px;color:#023545;">
+              We are delighted to confirm your reservation at <b>Coral Stay Beach Resort</b>.<br>
+              Below are your booking details:
+            </p>
+            <hr style="margin:18px 0;">
+            <!-- Booking Details -->
+            <h3 style="color:#023545;margin-bottom:8px;">Booking Details</h3>
+            <div style="font-size:15px;color:#222;">
+              <p><b>Guest Name:</b> ${guestName}</p>
+              <p><b>NIC:</b> ${nicNumber}</p>
+              <p><b>Contact:</b> ${contactNumber}</p>
+              <p><b>Email:</b> ${guestEmail}</p>
+              <p><b>Room:</b> ${roomTitle}</p>
+              <p><b>Package:</b> ${packageType}</p>
+              <p><b>Rooms Booked:</b> ${quantity}</p>
+              <p><b>Check-in:</b> ${checkIn.toDateString()}</p>
+              <p><b>Check-out:</b> ${checkOut.toDateString()}</p>
+            </div>
+            <hr style="margin:18px 0;">
+            <!-- Invoice -->
+            <h3 style="color:#023545;margin-bottom:8px;">Invoice</h3>
+            <div style="font-size:15px;">
+              <p>Price per Room: <b>${formatRs(basePrice)}</b></p>
+              <p>Subtotal: <b>${formatRs(subtotal)}</b></p>
+              <p>Service Fee: <b>${formatRs(serviceFee)}</b></p>
+              <p>Discount: <b>-${formatRs(discount)}</b></p>
+              <h4 style="margin:10px 0 0 0;">Total Amount: <span style="color:#008060;">${formatRs(totalAmount)}</span></h4>
+            </div>
+            <hr style="margin:18px 0;">
+            <p style="font-size:16px;color:#023545;font-weight:bold;margin-bottom:0;">
+              We look forward to welcoming you!
+            </p>
+          </div>
+          <div style="background:#fff;padding:24px 32px 16px 32px;">
+            <h3 style="color:#023545;margin-bottom:8px;">Contact Us</h3>
+            <div style="font-size:15px;color:#222;line-height:1.7;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <img src="https://cdn-icons-png.flaticon.com/512/854/854878.png" alt="Resort" style="width:20px;vertical-align:middle;" />
+                <span>Coral Stay Beach Resort</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <img src="https://cdn-icons-png.flaticon.com/512/684/684908.png" alt="Map" style="width:20px;vertical-align:middle;" />
+                <span>Map No 123/A Hikkaduwa</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Email" style="width:20px;vertical-align:middle;" />
+                <a href="mailto:coralstayhikkaduwa@gmail.com" style="color:#023545;text-decoration:underline;">coralstayhikkaduwa@gmail.com</a>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <img src="https://cdn-icons-png.flaticon.com/512/597/597177.png" alt="Phone" style="width:20px;vertical-align:middle;" />
+                <a href="tel:+9472917345" style="color:#023545;text-decoration:underline;">072917345</a>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp" style="width:20px;vertical-align:middle;" />
+                <a href="https://wa.me/9472918348" style="color:#25D366;text-decoration:underline;">072918348</a>
+              </div>
+              <div style="margin-top:12px;">
+                <a href="https://www.facebook.com/CoralStayHikkaduwa" target="_blank" style="margin-right:8px;">
+                  <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" style="width:22px;vertical-align:middle;" />
+                </a>
+                <a href="https://twitter.com/CoralStayResort" target="_blank" style="margin-right:8px;">
+                  <img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="width:22px;vertical-align:middle;" />
+                </a>
+                <a href="https://www.instagram.com/CoralStayHikkaduwa" target="_blank" style="margin-right:8px;">
+                  <img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" style="width:22px;vertical-align:middle;" />
+                </a>
+                <a href="https://www.linkedin.com/company/coralstayhikkaduwa" target="_blank">
+                  <img src="https://cdn-icons-png.flaticon.com/512/733/733561.png" alt="LinkedIn" style="width:22px;vertical-align:middle;" />
+                </a>
+              </div>
+            </div>
+            <div style="margin-top:16px;font-size:13px;color:#888;">
+              If you have any questions or need to make changes to your booking, please contact us using the details above.
+            </div>
+          </div>
+        </div>
       `;
+      // --- End Email HTML ---
 
       try {
         await transporter.sendMail({
@@ -140,10 +217,9 @@ exports.createBooking = async (req, res) => {
         });
       } catch (emailError) {
         console.error('❌ Email sending error:', emailError);
-        // Still return success, but notify about email failure
         return res.status(201).json({
           message: 'Booking successful, but failed to send confirmation email.',
-          emailError: emailError.message
+          emailError: emailError.message,
         });
       }
     } else {
@@ -151,33 +227,30 @@ exports.createBooking = async (req, res) => {
     }
 
     res.status(201).json({ message: 'Booking successful.' });
-
   } catch (error) {
     console.error('❌ Booking error:', error);
     res.status(500).json({
       error: 'Failed to save booking.',
-      details: error.message
+      details: error.message,
     });
   }
 };
 
 exports.checkAvailability = async (req, res) => {
   try {
-    const { roomId, checkIn, checkOut, packageType } = req.body;
+    const { roomId, checkIn, checkOut } = req.body;
 
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
 
     const overlappingBookings = await Booking.find({
       roomId,
-      packageType,
-      checkIn: { $lte: checkOutDate },
-      checkOut: { $gte: checkInDate }
+      checkIn: { $lt: checkOutDate },
+      checkOut: { $gt: checkInDate },
     });
 
     const bookedQuantity = overlappingBookings.reduce((sum, booking) => sum + (booking.quantity || 0), 0);
-    const totalRooms = 20;
-    const availableRooms = Math.max(0, totalRooms - bookedQuantity);
+    const availableRooms = Math.max(0, TOTAL_ROOMS_PER_ROOMTYPE - bookedQuantity);
 
     res.status(200).json({ availableRooms });
   } catch (error) {
