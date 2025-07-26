@@ -12,5 +12,6 @@ router.post('/', upload.single('image'), PackageController.addPackage);
 router.get('/:id', PackageController.getById);
 router.put('/:id', upload.single('image'), PackageController.updatePackage);
 router.delete('/:id', PackageController.deletePackage);
+router.post('/check-availability', PackageController.checkAvailability);
 
 module.exports = router;

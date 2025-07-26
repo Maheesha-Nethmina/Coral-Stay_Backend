@@ -1,4 +1,5 @@
 const Package = require('../models/packageModel');
+const SeatBooking = require('../models/sheetBookingModel');
 
 // Get all packages
 const getAllPackages = async (req, res) => {
@@ -158,10 +159,54 @@ const deletePackage = async (req, res) => {
   }
 };
 
+//check availability of package
+const TOTAL_SEATS = 24; // You can adjust this
+
+const checkAvailability = async (req, res) => {
+  const { date, seatNumber } = req.body;
+  const timeSlot = '9:00-10:00';
+
+  try {
+    const bookings = await SeatBooking.find({ date, timeSlot });
+    const bookedSeats = bookings.flatMap(b => b.seats);
+
+    const availableSeats = [];
+    for (let i = 1; i <= TOTAL_SEATS; i++) {
+      if (!bookedSeats.includes(i)) availableSeats.push(i);
+    }
+
+    let hasContinuousBlock = false;
+    for (let i = 0; i <= availableSeats.length - seatNumber; i++) {
+      const block = availableSeats.slice(i, i + seatNumber);
+      const isSequential = block.every((n, idx, arr) =>
+        idx === 0 || n === arr[idx - 1] + 1
+      );
+      if (isSequential) {
+        hasContinuousBlock = true;
+        break;
+      }
+    }
+
+    const isAvailable = availableSeats.length >= seatNumber;
+
+    res.json({
+      available: isAvailable,
+      continuousBlock: hasContinuousBlock,
+      availableSeats,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error checking availability' });
+  }
+};
+
+
+
 module.exports = {
   getAllPackages,
   addPackage,
   getById,
   updatePackage,
-  deletePackage
+  deletePackage,
+  checkAvailability
 };
