@@ -260,7 +260,7 @@ exports.checkAvailability = async (req, res) => {
 };
 
 
-//check availability for  package --- by Nema --
+// backend: checkRoomTypeAvailability
 
 exports.checkRoomTypeAvailability = async (req, res) => {
   try {
@@ -271,21 +271,34 @@ exports.checkRoomTypeAvailability = async (req, res) => {
     if (!roomTitle || !checkIn || !quantity) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    const TOTAL_ROOMS_PER_TYPE = {
-      'Deluxe Room': 5,
-      'Premier Room': 5,
-      'Royal Suite Suite': 5,
-      'Premier Ocean Room': 5,
-      'Presidential Suite': 5,
-    };
-    const totalRooms = TOTAL_ROOMS_PER_TYPE[roomTitle];
 
-    if (!totalRooms) {
+    // Normalize roomTitle to handle case-insensitivity and unexpected spaces
+    const normalizedRoomTitle = roomTitle.trim().toLowerCase();
+
+    // Define valid room types
+    const TOTAL_ROOMS_PER_TYPE = {
+      'deluxe room': 5,
+      'premier room': 5,
+      'royal suite': 5,
+      'premier ocean room': 5,
+      'presidential suite': 5,
+    };
+
+    // Check if room type exists in the available list
+    const foundRoomType = Object.keys(TOTAL_ROOMS_PER_TYPE).find(
+      (key) => key.toLowerCase() === normalizedRoomTitle
+    );
+
+    if (!foundRoomType) {
+      console.error('Invalid room type received:', roomTitle);
       return res.status(400).json({ error: 'Invalid room type' });
     }
+
+    const totalRooms = TOTAL_ROOMS_PER_TYPE[foundRoomType];
+
     // Find all bookings with the same roomTitle and checkIn date
     const bookings = await Booking.find({
-      roomTitle,
+      roomTitle: foundRoomType,
       checkIn: checkInDate,
     });
 
