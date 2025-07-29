@@ -258,3 +258,49 @@ exports.checkAvailability = async (req, res) => {
     res.status(500).json({ error: 'Error checking room availability.' });
   }
 };
+
+
+//check availability for  package --- by Nema --
+
+exports.checkRoomTypeAvailability = async (req, res) => {
+  try {
+    const { roomTitle, checkIn, quantity } = req.body;
+
+    const checkInDate = new Date(checkIn);
+
+    if (!roomTitle || !checkIn || !quantity) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    const TOTAL_ROOMS_PER_TYPE = {
+      'Deluxe Room': 5,
+      'Premier Room': 5,
+      'Royal Suite Suite': 5,
+      'Premier Ocean Room': 5,
+      'Presidential Suite': 5,
+    };
+    const totalRooms = TOTAL_ROOMS_PER_TYPE[roomTitle];
+
+    if (!totalRooms) {
+      return res.status(400).json({ error: 'Invalid room type' });
+    }
+    // Find all bookings with the same roomTitle and checkIn date
+    const bookings = await Booking.find({
+      roomTitle,
+      checkIn: checkInDate,
+    });
+
+    const bookedQuantity = bookings.reduce((sum, b) => sum + (b.quantity || 0), 0);
+    const availableRooms = Math.max(0, totalRooms - bookedQuantity);
+    const isAvailable = availableRooms >= quantity;
+
+    res.status(200).json({
+      available: isAvailable,
+      availableRooms,
+      totalRooms,
+      requested: quantity,
+    });
+  } catch (error) {
+    console.error('Error checking room type availability:', error);
+    res.status(500).json({ error: 'Server error while checking room availability.' });
+  }
+};

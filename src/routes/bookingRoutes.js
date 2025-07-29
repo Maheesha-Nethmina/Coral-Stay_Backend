@@ -7,5 +7,6 @@ router.post('/roombookings', bookingController.createBooking);
 
 //Fix method: should be POST for availability check
 router.post('/availability', bookingController.checkAvailability);
+router.get('/checkRoomTypeAvailability', bookingController.checkRoomTypeAvailability);
 
 module.exports = router;

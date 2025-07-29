@@ -159,8 +159,8 @@ const deletePackage = async (req, res) => {
   }
 };
 
-//check availability of package
-const TOTAL_SEATS = 24; // You can adjust this
+//check availability of package_NEMA
+const TOTAL_SEATS = 24;
 
 const checkAvailability = async (req, res) => {
   const { date, seatNumber } = req.body;
