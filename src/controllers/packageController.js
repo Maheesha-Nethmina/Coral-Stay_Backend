@@ -1,5 +1,6 @@
 const Package = require('../models/packageModel');
 const SeatBooking = require('../models/sheetBookingModel');
+const PackageBooking = require('../models/PackageBooking');
 
 // Get all packages
 const getAllPackages = async (req, res) => {
@@ -200,6 +201,51 @@ const checkAvailability = async (req, res) => {
   }
 };
 
+//package booking
+
+const bookPackage = async (req, res) => {
+  try {
+    const {
+      userId,
+      googleId,
+      user,
+      packageType,
+      bookedDate,
+      checkOutDate,
+      totalAmount,
+      packageDetails
+    } = req.body;
+
+    // Validate required fields
+    if (!user || !packageType || !bookedDate || !totalAmount) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const newBooking = new PackageBooking({
+      userId: userId || undefined,
+      googleId: googleId || undefined,
+      user,
+      packageType: packageType.toLowerCase(),
+      bookedDate: new Date(bookedDate),
+      checkOutDate: checkOutDate ? new Date(checkOutDate) : undefined,
+      totalAmount,
+      packageDetails
+    });
+
+    await newBooking.save();
+
+    res.status(201).json({
+      message: 'Package booking successful',
+      bookingId: newBooking._id, //return booking ID
+      booking: newBooking
+    });
+  } catch (error) {
+    console.error('Booking error:', error);
+    res.status(500).json({ message: 'Server error during package booking' });
+  }
+};
+
+
 
 
 module.exports = {
@@ -208,5 +254,7 @@ module.exports = {
   getById,
   updatePackage,
   deletePackage,
-  checkAvailability
+  checkAvailability,
+  bookPackage
+
 };

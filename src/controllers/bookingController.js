@@ -260,60 +260,51 @@ exports.checkAvailability = async (req, res) => {
 };
 
 
-// backend: checkRoomTypeAvailability
+// checkRoomTypeAvailability
 
 exports.checkRoomTypeAvailability = async (req, res) => {
   try {
-    const { roomTitle, checkIn, quantity } = req.body;
+    const { roomTitle, checkIn, checkOut, quantity } = req.body;
 
-    const checkInDate = new Date(checkIn);
-
-    if (!roomTitle || !checkIn || !quantity) {
+    if (!roomTitle || !checkIn || !checkOut || !quantity) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Normalize roomTitle to handle case-insensitivity and unexpected spaces
-    const normalizedRoomTitle = roomTitle.trim().toLowerCase();
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
 
-    // Define valid room types
     const TOTAL_ROOMS_PER_TYPE = {
-      'deluxe room': 5,
-      'premier room': 5,
-      'royal suite': 5,
-      'premier ocean room': 5,
-      'presidential suite': 5,
+      'Deluxe': 5,
+      'Premier': 5,
+      'Royal': 5,
+      'PremierOcean': 5,
+      'Presidential': 5,
     };
 
-    // Check if room type exists in the available list
-    const foundRoomType = Object.keys(TOTAL_ROOMS_PER_TYPE).find(
-      (key) => key.toLowerCase() === normalizedRoomTitle
-    );
+    const totalRooms = TOTAL_ROOMS_PER_TYPE[roomTitle];
 
-    if (!foundRoomType) {
-      console.error('Invalid room type received:', roomTitle);
+    if (totalRooms === undefined) {
       return res.status(400).json({ error: 'Invalid room type' });
     }
 
-    const totalRooms = TOTAL_ROOMS_PER_TYPE[foundRoomType];
-
-    // Find all bookings with the same roomTitle and checkIn date
-    const bookings = await Booking.find({
-      roomTitle: foundRoomType,
-      checkIn: checkInDate,
+    const overlappingBookings = await Booking.find({
+      roomTitle,
+      checkIn: { $lt: checkOutDate },
+      checkOut: { $gt: checkInDate },
     });
 
-    const bookedQuantity = bookings.reduce((sum, b) => sum + (b.quantity || 0), 0);
-    const availableRooms = Math.max(0, totalRooms - bookedQuantity);
+    const totalBooked = overlappingBookings.reduce((sum, b) => sum + (b.quantity || 0), 0);
+    const availableRooms = Math.max(0, totalRooms - totalBooked);
     const isAvailable = availableRooms >= quantity;
 
     res.status(200).json({
       available: isAvailable,
-      availableRooms,
       totalRooms,
+      availableRooms,
       requested: quantity,
     });
   } catch (error) {
-    console.error('Error checking room type availability:', error);
+    console.error('Room availability check failed:', error);
     res.status(500).json({ error: 'Server error while checking room availability.' });
   }
 };
