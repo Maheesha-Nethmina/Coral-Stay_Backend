@@ -1,6 +1,7 @@
 const Package = require('../models/packageModel');
 const SeatBooking = require('../models/sheetBookingModel');
 const PackageBooking = require('../models/PackageBooking');
+const Booking = require('../models/Booking');
 
 // Get all packages
 const getAllPackages = async (req, res) => {
@@ -213,15 +214,18 @@ const bookPackage = async (req, res) => {
       bookedDate,
       checkOutDate,
       totalAmount,
-      packageDetails
+      packageDetails,
+      roomBooking,
+      seatBooking
     } = req.body;
 
-    // Validate required fields
+    // Validate required fields for main package
     if (!user || !packageType || !bookedDate || !totalAmount) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ message: 'Missing required fields for package booking' });
     }
 
-    const newBooking = new PackageBooking({
+    // Save PackageBooking
+    const newPackageBooking = new PackageBooking({
       userId: userId || undefined,
       googleId: googleId || undefined,
       user,
@@ -232,18 +236,58 @@ const bookPackage = async (req, res) => {
       packageDetails
     });
 
-    await newBooking.save();
+    await newPackageBooking.save();
+
+    // If roomBooking exists (for hotel/both), insert into Booking
+    let hotelBooking = null;
+    if (roomBooking) {
+      const newHotelBooking = new Booking({
+        roomId: roomBooking.roomId,
+        roomTitle: roomBooking.roomTitle,
+        packageType: roomBooking.packageType,
+        checkIn: new Date(roomBooking.checkIn),
+        checkOut: new Date(roomBooking.checkOut),
+        quantity: roomBooking.quantity,
+        guestName: roomBooking.guestName,
+        guestEmail: roomBooking.guestEmail,
+        nicNumber: roomBooking.nicNumber,
+        contactNumber: roomBooking.contactNumber,
+        totalAmount: roomBooking.totalAmount
+      });
+
+      hotelBooking = await newHotelBooking.save();
+    }
+
+    // If seatBooking exists (for boat/both), insert into SeatBooking
+    let seatBookingResult = null;
+    if (seatBooking) {
+      const newSeatBooking = new SeatBooking({
+        userId: userId || undefined,
+        googleId: googleId || undefined,
+        date: seatBooking.date,
+        timeSlot: seatBooking.timeSlot,
+        seats: seatBooking.seats,
+        user: seatBooking.user,
+        totalAmount: seatBooking.totalAmount
+      });
+
+      seatBookingResult = await newSeatBooking.save();
+    }
 
     res.status(201).json({
       message: 'Package booking successful',
-      bookingId: newBooking._id, //return booking ID
-      booking: newBooking
+      packageBookingId: newPackageBooking._id,
+      hotelBookingId: hotelBooking?._id,
+      seatBookingId: seatBookingResult?._id
     });
+
   } catch (error) {
     console.error('Booking error:', error);
     res.status(500).json({ message: 'Server error during package booking' });
   }
 };
+
+
 
 
 
