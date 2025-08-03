@@ -11,7 +11,7 @@ const packageBookingSchema = new mongoose.Schema({
     nicNumber: { type: String, required: true },
   },
 
-  packageType: { type: String, enum: ['hotel', 'boatTour', 'both'], required: true },
+  packageType: { type: String, enum: ['hotel', 'boattour', 'both'], required: true },
   bookedDate: { type: Date, required: true },
   checkOutDate: { type: Date }, // optional
   totalAmount: { type: Number, required: true },
