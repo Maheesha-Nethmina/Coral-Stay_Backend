@@ -242,7 +242,7 @@ const bookPackage = async (req, res) => {
     let hotelBooking = null;
     if (roomBooking) {
       const newHotelBooking = new Booking({
-        roomId: roomBooking.roomId,
+        roomId: Number(roomBooking.roomId), 
         roomTitle: roomBooking.roomTitle,
         packageType: roomBooking.packageType,
         checkIn: new Date(roomBooking.checkIn),
