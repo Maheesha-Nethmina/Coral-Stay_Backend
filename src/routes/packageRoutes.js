@@ -14,5 +14,6 @@ router.put('/:id', upload.single('image'), PackageController.updatePackage);
 router.delete('/:id', PackageController.deletePackage);
 router.post('/check-availability', PackageController.checkAvailability);
 router.post('/book-package', PackageController.bookPackage);
+router.get('/booked-packages', PackageController.getBookedPackages);
 
 module.exports = router;

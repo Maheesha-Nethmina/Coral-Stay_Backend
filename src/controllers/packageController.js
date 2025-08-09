@@ -287,6 +287,22 @@ const bookPackage = async (req, res) => {
   }
 };
 
+// GET all booked packages (always return array; empty when none)
+const getBookedPackages = async (req, res) => {
+  try {
+    const bookings = await PackageBooking.find()
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Always return 200 with an array (could be empty)
+    return res.status(200).json({ bookings });
+  } catch (err) {
+    console.error("Get booked packages error:", err);
+    res.status(500).json({ message: "Server error fetching booked packages" });
+  }
+};
+
+
 
 
 
@@ -299,6 +315,7 @@ module.exports = {
   updatePackage,
   deletePackage,
   checkAvailability,
-  bookPackage
+  bookPackage,
+  getBookedPackages
 
 };
