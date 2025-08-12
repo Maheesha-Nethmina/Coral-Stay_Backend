@@ -258,3 +258,92 @@ exports.checkAvailability = async (req, res) => {
     res.status(500).json({ error: 'Error checking room availability.' });
   }
 };
+
+
+// checkRoomTypeAvailability
+
+exports.checkRoomTypeAvailability = async (req, res) => {
+  try {
+    const { roomTitle, checkIn, checkOut, quantity } = req.body;
+
+    if (!roomTitle || !checkIn || !checkOut || !quantity) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+
+    const TOTAL_ROOMS_PER_TYPE = {
+      'Deluxe': 5,
+      'Premier': 5,
+      'Royal': 5,
+      'PremierOcean': 5,
+      'Presidential': 5,
+    };
+
+    const totalRooms = TOTAL_ROOMS_PER_TYPE[roomTitle];
+
+    if (totalRooms === undefined) {
+      return res.status(400).json({ error: 'Invalid room type' });
+    }
+
+    const overlappingBookings = await Booking.find({
+      roomTitle,
+      checkIn: { $lt: checkOutDate },
+      checkOut: { $gt: checkInDate },
+    });
+
+    const totalBooked = overlappingBookings.reduce((sum, b) => sum + (b.quantity || 0), 0);
+    const availableRooms = Math.max(0, totalRooms - totalBooked);
+    const isAvailable = availableRooms >= quantity;
+
+    res.status(200).json({
+      available: isAvailable,
+      totalRooms,
+      availableRooms,
+      requested: quantity,
+    });
+  } catch (error) {
+    console.error('Room availability check failed:', error);
+    res.status(500).json({ error: 'Server error while checking room availability.' });
+  }
+};
+
+// GET all hotel room bookings for a user (by userId)
+// exports.getHotelBookingsByUser = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+
+//     if (!userId) {
+//       return res.status(400).json({ error: 'User ID is required' });
+//     }
+
+//     // Fetch bookings linked to userId, sorted newest first
+//     const bookings = await Booking.find({ userId })
+//       .sort({ createdAt: -1 })
+//       .lean();
+
+//     res.status(200).json(bookings);
+//   } catch (error) {
+//     console.error('Failed to fetch hotel bookings:', error);
+//     res.status(500).json({ error: 'Server error while fetching hotel bookings.' });
+//   }
+// };
+
+exports.getHotelBookingsByUser = async (req, res) => {
+  try {
+    const { name } = req.params;
+
+    if (!name) {
+      return res.status(400).json({ error: 'User name is required' });
+    }
+
+    // Find bookings by name
+    const bookings = await Booking.find({ name }).sort({ createdAt: -1 });
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error('Failed to fetch hotel bookings:', error);
+    res.status(500).json({ error: 'Server error while fetching hotel bookings.' });
+  }
+};

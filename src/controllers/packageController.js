@@ -1,5 +1,8 @@
 const Package = require('../models/packageModel');
 const SeatBooking = require('../models/sheetBookingModel');
+const PackageBooking = require('../models/PackageBooking');
+const Booking = require('../models/Booking');
+const nodemailer = require('nodemailer');
 
 // Get all packages
 const getAllPackages = async (req, res) => {
@@ -159,8 +162,8 @@ const deletePackage = async (req, res) => {
   }
 };
 
-//check availability of package
-const TOTAL_SEATS = 24; // You can adjust this
+//check availability of package_NEMA
+const TOTAL_SEATS = 24;
 
 const checkAvailability = async (req, res) => {
   const { date, seatNumber } = req.body;
@@ -200,6 +203,173 @@ const checkAvailability = async (req, res) => {
   }
 };
 
+//package booking
+
+const bookPackage = async (req, res) => {
+  try {
+    const {
+      userId,
+      googleId,
+      user,
+      packageType,
+      bookedDate,
+      checkOutDate,
+      totalAmount,
+      packageDetails,
+      roomBooking,
+      seatBooking
+    } = req.body;
+
+    // Validate required fields for main package
+    if (!user || !packageType || !bookedDate || !totalAmount) {
+      return res.status(400).json({ message: 'Missing required fields for package booking' });
+    }
+
+    // Save PackageBooking
+    const newPackageBooking = new PackageBooking({
+      userId: userId || undefined,
+      googleId: googleId || undefined,
+      user,
+      packageType: packageType.toLowerCase(),
+      bookedDate: new Date(bookedDate),
+      checkOutDate: checkOutDate ? new Date(checkOutDate) : undefined,
+      totalAmount,
+      packageDetails
+    });
+
+    await newPackageBooking.save();
+
+    // If roomBooking exists (for hotel/both), insert into Booking
+    let hotelBooking = null;
+    if (roomBooking) {
+      const newHotelBooking = new Booking({
+        roomId: Number(roomBooking.roomId), 
+        roomTitle: roomBooking.roomTitle,
+        packageType: roomBooking.packageType,
+        checkIn: new Date(roomBooking.checkIn),
+        checkOut: new Date(roomBooking.checkOut),
+        quantity: roomBooking.quantity,
+        guestName: roomBooking.guestName,
+        guestEmail: roomBooking.guestEmail,
+        nicNumber: roomBooking.nicNumber,
+        contactNumber: roomBooking.contactNumber,
+        totalAmount: roomBooking.totalAmount
+      });
+
+      hotelBooking = await newHotelBooking.save();
+    }
+
+    // If seatBooking exists (for boat/both), insert into SeatBooking
+    let seatBookingResult = null;
+    if (seatBooking) {
+      const newSeatBooking = new SeatBooking({
+        userId: userId || undefined,
+        googleId: googleId || undefined,
+        date: seatBooking.date,
+        timeSlot: seatBooking.timeSlot,
+        seats: seatBooking.seats,
+        user: seatBooking.user,
+        totalAmount: seatBooking.totalAmount
+      });
+
+      seatBookingResult = await newSeatBooking.save();
+    }
+
+    res.status(201).json({
+      message: 'Package booking successful',
+      packageBookingId: newPackageBooking._id,
+      hotelBookingId: hotelBooking?._id,
+      seatBookingId: seatBookingResult?._id
+    });
+
+  } catch (error) {
+    console.error('Booking error:', error);
+    res.status(500).json({ message: 'Server error during package booking' });
+  }
+};
+
+//make change the save option
+
+// GET all booked packages
+const getBookedPackages = async (req, res) => {
+  try {
+    const bookings = await PackageBooking.find()
+      .sort({ createdAt: -1 })
+      .lean();
+
+
+    return res.status(200).json({ bookings });
+  } catch (err) {
+    console.error("Get booked packages error:", err);
+    res.status(500).json({ message: "Server error fetching booked packages" });
+  }
+};
+
+// DELETE booking by ID and send email notification
+const deleteBooking = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+
+    // Find booking
+    const booking = await PackageBooking.findById(bookingId).populate('user');
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    const userEmail = booking.user?.email;
+    const userName = booking.user?.fullName || 'User';
+
+    // Delete booking
+    await PackageBooking.findByIdAndDelete(bookingId);
+
+    // Send email if email exists
+    if (userEmail) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: userEmail,
+        subject: 'Booking Cancellation',
+        text: `Hello ${userName},\n\nWe have deleted your booking.\n\nRegards,\nYour Company`
+      };
+
+      await transporter.sendMail(mailOptions);
+    }
+
+    return res.status(200).json({ message: 'Booking deleted and email sent successfully' });
+  } catch (err) {
+    console.error("Delete booking error:", err);
+    res.status(500).json({ message: "Server error deleting booking" });
+  }
+};
+
+// GET all package bookings for a user
+const getPackageBookingsByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    const bookings = await PackageBooking.find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json(bookings);
+  } catch (err) {
+    console.error("Error fetching package bookings:", err);
+    return res.status(500).json({ error: "Server error fetching package bookings" });
+  }
+};
+
+
 
 
 module.exports = {
@@ -208,5 +378,10 @@ module.exports = {
   getById,
   updatePackage,
   deletePackage,
-  checkAvailability
+  checkAvailability,
+  bookPackage,
+  getBookedPackages,
+  deleteBooking,
+  getPackageBookingsByUser
+
 };
