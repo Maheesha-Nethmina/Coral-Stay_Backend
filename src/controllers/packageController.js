@@ -2,6 +2,7 @@ const Package = require('../models/packageModel');
 const SeatBooking = require('../models/sheetBookingModel');
 const PackageBooking = require('../models/PackageBooking');
 const Booking = require('../models/Booking');
+const nodemailer = require('nodemailer');
 
 // Get all packages
 const getAllPackages = async (req, res) => {
@@ -287,14 +288,16 @@ const bookPackage = async (req, res) => {
   }
 };
 
-// GET all booked packages (always return array; empty when none)
+//make change the save option
+
+// GET all booked packages
 const getBookedPackages = async (req, res) => {
   try {
     const bookings = await PackageBooking.find()
       .sort({ createdAt: -1 })
       .lean();
 
-    // Always return 200 with an array (could be empty)
+
     return res.status(200).json({ bookings });
   } catch (err) {
     console.error("Get booked packages error:", err);
@@ -302,8 +305,69 @@ const getBookedPackages = async (req, res) => {
   }
 };
 
+// DELETE booking by ID and send email notification
+const deleteBooking = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
 
+    // Find booking
+    const booking = await PackageBooking.findById(bookingId).populate('user');
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
 
+    const userEmail = booking.user?.email;
+    const userName = booking.user?.fullName || 'User';
+
+    // Delete booking
+    await PackageBooking.findByIdAndDelete(bookingId);
+
+    // Send email if email exists
+    if (userEmail) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: userEmail,
+        subject: 'Booking Cancellation',
+        text: `Hello ${userName},\n\nWe have deleted your booking.\n\nRegards,\nYour Company`
+      };
+
+      await transporter.sendMail(mailOptions);
+    }
+
+    return res.status(200).json({ message: 'Booking deleted and email sent successfully' });
+  } catch (err) {
+    console.error("Delete booking error:", err);
+    res.status(500).json({ message: "Server error deleting booking" });
+  }
+};
+
+// GET all package bookings for a user
+const getPackageBookingsByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    const bookings = await PackageBooking.find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json(bookings);
+  } catch (err) {
+    console.error("Error fetching package bookings:", err);
+    return res.status(500).json({ error: "Server error fetching package bookings" });
+  }
+};
 
 
 
@@ -316,6 +380,8 @@ module.exports = {
   deletePackage,
   checkAvailability,
   bookPackage,
-  getBookedPackages
+  getBookedPackages,
+  deleteBooking,
+  getPackageBookingsByUser
 
 };

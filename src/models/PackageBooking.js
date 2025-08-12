@@ -1,9 +1,8 @@
 const mongoose = require('mongoose');
 
 const packageBookingSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Optional
-  googleId: { type: String }, // Optional
-
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  googleId: { type: String },
   user: {
     fullName: { type: String, required: true },
     email: { type: String, required: true },
@@ -13,7 +12,7 @@ const packageBookingSchema = new mongoose.Schema({
 
   packageType: { type: String, enum: ['hotel', 'boattour', 'both'], required: true },
   bookedDate: { type: Date, required: true },
-  checkOutDate: { type: Date }, // optional
+  checkOutDate: { type: Date },
   totalAmount: { type: Number, required: true },
 
   packageDetails: {
