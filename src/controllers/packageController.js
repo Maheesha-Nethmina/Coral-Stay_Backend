@@ -3,6 +3,7 @@ const SeatBooking = require('../models/sheetBookingModel');
 const PackageBooking = require('../models/PackageBooking');
 const Booking = require('../models/Booking');
 const nodemailer = require('nodemailer');
+const mongoose = require('mongoose');
 
 // Get all packages
 const getAllPackages = async (req, res) => {
@@ -349,7 +350,7 @@ const deleteBooking = async (req, res) => {
   }
 };
 
-// GET all package bookings for a user
+// GET all package bookings for a user (supports both ObjectId and GoogleId)
 const getPackageBookingsByUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -358,16 +359,34 @@ const getPackageBookingsByUser = async (req, res) => {
       return res.status(400).json({ error: 'User ID is required' });
     }
 
-    const bookings = await PackageBooking.find({ userId })
+    // Build query to match either MongoDB _id or googleId string
+    let query = {
+      $or: [{ googleId: userId }]
+    };
+
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      query.$or.push({ userId: new mongoose.Types.ObjectId(userId) });
+    }
+
+    const bookings = await PackageBooking.find(query)
       .sort({ createdAt: -1 })
       .lean();
 
-    return res.status(200).json(bookings);
+    const formattedBookings = bookings.map(b => ({
+      _id: b._id,
+      packageName: b.packageDetails?.name || "N/A",
+      bookingDate: b.bookedDate,
+      status: b.status || "Confirmed",
+      amount: b.totalAmount
+    }));
+
+    return res.status(200).json(formattedBookings);
   } catch (err) {
     console.error("Error fetching package bookings:", err);
     return res.status(500).json({ error: "Server error fetching package bookings" });
   }
 };
+
 
 
 
