@@ -338,8 +338,8 @@ exports.getHotelBookingsByUser = async (req, res) => {
       return res.status(400).json({ error: 'User name is required' });
     }
 
-    // Find bookings by name
-    const bookings = await Booking.find({ name }).sort({ createdAt: -1 });
+    // Match against guestName field
+    const bookings = await Booking.find({ guestName: name }).sort({ createdAt: -1 });
 
     res.status(200).json(bookings);
   } catch (error) {

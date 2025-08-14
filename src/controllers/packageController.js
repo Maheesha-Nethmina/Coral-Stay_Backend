@@ -3,6 +3,8 @@ const SeatBooking = require('../models/sheetBookingModel');
 const PackageBooking = require('../models/PackageBooking');
 const Booking = require('../models/Booking');
 const nodemailer = require('nodemailer');
+const mongoose = require('mongoose');
+const User = require('../models/userModel');
 
 // Get all packages
 const getAllPackages = async (req, res) => {
@@ -349,25 +351,50 @@ const deleteBooking = async (req, res) => {
   }
 };
 
-// GET all package bookings for a user
+// GET all package bookings for a user (supports ObjectId, GoogleId, and email fallback)
 const getPackageBookingsByUser = async (req, res) => {
   try {
     const { userId } = req.params;
-
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
     }
 
-    const bookings = await PackageBooking.find({ userId })
+    const or = [];
+
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      // Match documents saved with a Mongo userId
+      or.push({ userId: new mongoose.Types.ObjectId(userId) });
+
+      // Also match documents that were saved with googleId only
+      const user = await User.findById(userId).lean();
+      if (user?.googleId) or.push({ googleId: user.googleId });
+
+      // Optional safety net: if old records only stored email inside 'user' subdoc
+      if (user?.email) or.push({ 'user.email': user.email });
+    } else {
+      // Treat the param as a googleId
+      or.push({ googleId: userId });
+    }
+
+    const bookings = await PackageBooking.find({ $or: or })
       .sort({ createdAt: -1 })
       .lean();
 
-    return res.status(200).json(bookings);
+    const formattedBookings = bookings.map(b => ({
+      _id: b._id,
+      packageName: b.packageDetails?.name || 'N/A',
+      bookingDate: b.bookedDate,
+      status: b.status || 'Confirmed',
+      amount: b.totalAmount
+    }));
+
+    return res.status(200).json(formattedBookings);
   } catch (err) {
-    console.error("Error fetching package bookings:", err);
-    return res.status(500).json({ error: "Server error fetching package bookings" });
+    console.error('Error fetching package bookings:', err);
+    return res.status(500).json({ error: 'Server error fetching package bookings' });
   }
 };
+
 
 
 
