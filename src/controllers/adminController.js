@@ -3,6 +3,7 @@ const CancellationRequest = require('../models/cancellationRequestModel');
 const sheetBooking = require('../models/sheetBookingModel');
 const booking = require('../models/Booking');
 const nodemailer = require('nodemailer');
+const packageBooking = require('../models/PackageBooking');
 require('dotenv').config();
 
 // Get all users
@@ -148,64 +149,144 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,  
   },
 });
-// Request cancellation
+
+
+// Request cancellation for bookings
+
+// Request cancellation for bookings
 const requestCancellation = async (req, res) => {
   try {
     const { userId, bookingId, reason, refundAmount, type } = req.body;
 
-    const booking = await sheetBooking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+    let currentBooking;
+    let bookingDate;
+    let amount;
+    let extraFields = {};
+    let normalizedType;
+
+    switch (type) {
+      case 'reefTour':
+        currentBooking = await sheetBooking.findById(bookingId);
+        if (!currentBooking) return res.status(404).json({ message: 'Reef tour booking not found' });
+
+        bookingDate = currentBooking.date;
+        amount = currentBooking.totalAmount;
+        extraFields = {
+          timeSlot: currentBooking.timeSlot || '',
+          seats: currentBooking.seats || []
+        };
+        normalizedType = 'reefTour';
+        break;
+
+      case 'hotel':
+        currentBooking = await booking.findById(bookingId);
+        if (!currentBooking) return res.status(404).json({ message: 'Hotel booking not found' });
+
+        bookingDate = currentBooking.checkIn;
+        amount = currentBooking.totalAmount;
+        extraFields = {
+          checkOut: currentBooking.checkOut,
+          roomTitle: currentBooking.roomTitle
+        };
+        normalizedType = 'hotelRoom';
+        break;
+
+      case 'package':
+        currentBooking = await packageBooking.findById(bookingId);
+        if (!currentBooking) return res.status(404).json({ message: 'Package booking not found' });
+
+        // ✅ map correctly to schema fields
+        bookingDate = currentBooking.bookedDate;
+        amount = currentBooking.totalAmount;
+        extraFields = {
+          packageName: currentBooking.packageDetails?.name || ''
+        };
+        normalizedType = 'specialPackage';
+        break;
+
+      default:
+        return res.status(400).json({ message: 'Invalid booking type' });
+    }
+
+    // Validate required fields before saving
+    if (!bookingDate || !amount) {
+      return res.status(400).json({ message: 'Invalid booking data (missing date or amount)' });
     }
 
     const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     const newCancellation = new CancellationRequest({
       userId,
       bookingId,
-      type,
-      date: booking.date,
-      timeSlot: booking.timeSlot || '',
+      type: normalizedType,
       reason,
-      amount: booking.totalAmount,
       refundAmount,
+      amount,
+      date: bookingDate,
+      ...extraFields,
     });
 
     await newCancellation.save();
 
-    // Send cancellation confirmation email
-    const mailOptions = {
-      from: 'yourappemail@gmail.com',
+    // --- Prepare Email ---
+    let subject, html;
+    if (normalizedType === 'reefTour') {
+      subject = 'Your Reef Tour Cancellation Request is Received';
+      html = `
+        <h2>Hello ${user.name},</h2>
+        <p>Your cancellation request has been received for the reef tour:</p>
+        <ul>
+          <li><strong>Date:</strong> ${currentBooking.date}</li>
+          <li><strong>Time Slot:</strong> ${currentBooking.timeSlot}</li>
+          <li><strong>Refund Amount:</strong> Rs. ${refundAmount}</li>
+        </ul>
+        <p>Reason: ${reason}</p>
+      `;
+    } else if (normalizedType === 'hotelRoom') {
+      subject = 'Your Hotel Booking Cancellation Request is Received';
+      html = `
+        <h2>Hello ${user.name},</h2>
+        <p>Your cancellation request has been received for your hotel booking:</p>
+        <ul>
+          <li><strong>Room:</strong> ${currentBooking.roomTitle}</li>
+          <li><strong>Check-In:</strong> ${currentBooking.checkIn}</li>
+          <li><strong>Check-Out:</strong> ${currentBooking.checkOut}</li>
+          <li><strong>Refund Amount:</strong> Rs. ${refundAmount}</li>
+        </ul>
+        <p>Reason: ${reason}</p>
+      `;
+    } else if (normalizedType === 'specialPackage') {
+      subject = 'Your Package Booking Cancellation Request is Received';
+      html = `
+        <h2>Hello ${user.name},</h2>
+        <p>Your cancellation request has been received for your package:</p>
+        <ul>
+          <li><strong>Package:</strong> ${currentBooking.packageDetails?.name}</li>
+          <li><strong>Booked Date:</strong> ${currentBooking.bookedDate}</li>
+          <li><strong>Refund Amount:</strong> Rs. ${refundAmount}</li>
+        </ul>
+        <p>Reason: ${reason}</p>
+      `;
+    }
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
       to: user.email,
-      subject: 'Your Reef Tour Cancellation Request is Received',
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 10px;">
-          <h2>Hello ${user.name},</h2>
-          <p>Your cancellation request has been received for the following booking:</p>
-          <ul>
-            <li><strong>Date:</strong> ${booking.date}</li>
-            <li><strong>Time Slot:</strong> ${booking.timeSlot}</li>
-            <li><strong>Refund Amount:</strong> Rs. ${refundAmount}</li>
-          </ul>
-          <p><strong>Reason Provided:</strong> ${reason}</p>
-          <p>We are currently processing your request. You will receive another email once it's completed.</p>
-          <p>Thank you,<br/>CoralStay Team</p>
-        </div>
-      `,
-    };
+      subject,
+      html,
+    });
 
-    await transporter.sendMail(mailOptions);
-
-    res.status(201).json({ message: 'Cancellation request submitted and email sent' });
-
+    res.status(201).json({ message: `${type} cancellation request submitted and email sent` });
   } catch (err) {
     console.error('Cancellation request error:', err);
     res.status(500).json({ message: 'Server error while processing cancellation' });
   }
 };
+
+
+
+
 
 // Get all cancellation requests
 const getAllCancellationRequests = async (req, res) => {
@@ -306,14 +387,32 @@ const getAllRoomBookings = async (req, res) => {
 };
 
 
+
 // Delete booking and send cancellation email
 const deleteBooking = async (req, res) => {
   try {
-    const bookingId = req.params.id;
-    const deletedBooking = await booking.findByIdAndDelete(bookingId);
+    const requestId = req.params.id;
+
+    // Find cancellation request
+    const request = await cancellationRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ message: 'Cancellation request not found' });
+    }
+
+    let deletedBooking = null;
+
+    // Delete from correct collection
+    if (request.type === 'hotelRoom') {
+      deletedBooking = await booking.findByIdAndDelete(request.bookingId);
+    } else {
+      deletedBooking = await packageBooking.findByIdAndDelete(request.bookingId);
+    }
+
+    // Delete the cancellation request itself
+    await cancellationRequest.findByIdAndDelete(requestId);
 
     if (!deletedBooking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ message: 'Booking not found in related table' });
     }
 
     // Set up email transport
@@ -325,40 +424,39 @@ const deleteBooking = async (req, res) => {
       },
     });
 
-    // Compose detailed email
+    //Compose email (supports both models)
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: deletedBooking.guestEmail,
+      to: deletedBooking.user?.email || deletedBooking.guestEmail,
       subject: 'Booking Cancellation Notice - CoralStay',
       text: `
-Dear ${deletedBooking.guestName},
+Dear ${deletedBooking.user?.fullName || deletedBooking.guestName},
 
-We regret to inform you that your hotel booking with CoralStay has been cancelled.
+We regret to inform you that your booking with CoralStay has been cancelled.
 
 Here are your booking details:
 
-🛏 Room: ${deletedBooking.roomTitle}
-📦 Package: ${deletedBooking.packageType}
-📅 Check-in Date: ${deletedBooking.checkIn}
-📅 Check-out Date: ${deletedBooking.checkOut}
+📦 Package/Room: ${deletedBooking.packageType || deletedBooking.roomTitle}
+📅 Check-in Date: ${deletedBooking.checkIn || deletedBooking.bookedDate}
+📅 Check-out Date: ${deletedBooking.checkOut || deletedBooking.checkOutDate}
 
-We sincerely apologize for any inconvenience this may cause. If you have any questions or need assistance, feel free to contact us at coralstayhelp@gmail.com or call our support line.
+We sincerely apologize for any inconvenience this may cause. 
+If you have any questions or need assistance, contact us at coralstayhelp@gmail.com.
 
-Thank you for your understanding.
-
-Warm regards,
+Warm regards,  
 The CoralStay Team
       `.trim(),
     };
 
     await transporter.sendMail(mailOptions);
 
-    res.status(200).json({ message: 'Booking deleted and email sent' });
+    res.status(200).json({ message: 'Booking deleted, cancellation request removed, and email sent' });
   } catch (error) {
     console.error('Error deleting booking:', error);
     res.status(500).json({ message: 'Failed to delete booking and send email' });
   }
 };
+
 
 
 
