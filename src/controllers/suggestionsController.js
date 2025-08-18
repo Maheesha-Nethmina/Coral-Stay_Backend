@@ -35,21 +35,24 @@ exports.getPackingSuggestions = async (req, res) => {
       const wind = forecast.wind.speed;
 
       if (condition.includes("rain")) {
-        suggestions.push("Umbrella", "Raincoat");
+        suggestions.push("Umbrella", "Raincoat" , "Quick-dry clothing" ,"Waterproof shoes or sandals", "Waterproof phone pouch / dry bags");
       }
       if (wind > 6) {
         suggestions.push("Light sweater", "Avoid long dresses");
       }
       if (condition.includes("clear")) {
-        suggestions.push("Sunscreen", "Sunglasses", "Hat");
+        suggestions.push("Sunscreen", "Sunglasses", "Hat" , "Light cotton clothes" , "Reusable water bottle (hydration)");
       }
     } else {
       suggestions.push("Normal clothing");
     }
 
+    // Respond with booking details + suggestions
     res.json({
       bookingId,
       guest: booking.guestName,
+      roomType: booking.roomTitle,   
+      quantity: booking.quantity,    
       checkIn,
       checkOut: booking.checkOut,
       suggestions,
