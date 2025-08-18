@@ -48,7 +48,7 @@ const weatherRoute = require('./src/routes/weatherRoute');
 const bookingRoutes = require('./src/routes/bookingRoutes');
 const weatherAlertRoutes = require('./src/routes/weatherAlertRoutes');
 const reviewRoutes = require('./src/routes/reviewRoutes');
-
+const suggestionsRoutes = require('./src/routes/suggestions');
 
 
 app.use('/api/reviews', reviewRoutes);
@@ -61,6 +61,8 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/weather', weatherRoute);
 app.use('/bookings', bookingRoutes);
 app.use('/api/weather-alerts', weatherAlertRoutes);
+app.use('/suggestions', suggestionsRoutes);
+
 //app.use('/reviews', reviewRoutes);
 
 // Root route
